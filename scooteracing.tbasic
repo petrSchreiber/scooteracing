@@ -1,5 +1,7 @@
 ﻿uses "tbgl"
 
+#include "offScreenRenderer/offScreenRenderer8b.tbasicu"
+
 begin const
   ' -- Scene IDs
   %scene  = 1
@@ -38,13 +40,35 @@ function tbMain()
   tbgl_entityCreateModelSlot(%scene, %eScooter, 0, 1)
     tbgl_entitySetPos(%scene, %eScooter, 0, 0, 0)
 
+  dim osr as offScreenRenderer8b
+  long width, height
+  tbgl_getWindowClient(hWnd, width, height)
+  osr.buildBuffer(width/8, height/8, %OSR_NEAREST_NEIGHBOUR)
+
   ' -- Main loop
   while tbgl_isWindow(hWnd) 
     frameRate = tbgl_getFrameRate
-
-    tbgl_clearFrame 
-
-      tbgl_sceneRender(%scene)
+    
+    osr.beginRender()
+      tbgl_renderMatrix3D
+      tbgl_clearFrame 
+      
+        tbgl_sceneRender(%scene)
+    osr.endRender()
+      
+    tbgl_renderMatrix2D(0, 0, 1, 1)
+    tbgl_clearFrame
+      tbgl_pushColor 255,255,255
+      tbgl_pushState %TBGL_TEXTURING
+        osr.bindTexture()
+        tbgl_beginPoly %GL_QUADS
+          tbgl_texCoord2d 0, 0: tbgl_vertex 0, 0
+          tbgl_texCoord2d 1, 0: tbgl_vertex 1, 0
+          tbgl_texCoord2d 1, 1: tbgl_vertex 1, 1
+          tbgl_texCoord2d 0, 1: tbgl_vertex 0, 1
+        tbgl_endPoly
+      tbgl_popState
+      tbgl_popColor
       
     tbgl_drawFrame
 
