@@ -1,0 +1,63 @@
+﻿uses "tbgl"
+
+begin const
+  ' -- Scene IDs
+  %scene  = 1
+ 
+  ' -- Entity IDs 
+  %eCamera = 1
+  %eLight
+  %eScooter
+end const
+
+function tbMain()
+  
+  double frameRate
+  
+  ' -- Create and show window
+  dWord hWnd = tbgl_createWindowEx("Scooteracing - press ESC to quit", 1280, 720, 32, %TBGL_WS_WINDOWED | %TBGL_WS_CLOSEBOX)
+  tbgl_showWindow
+
+  ' -- Create scene
+  tbgl_sceneCreate(%scene)
+
+  ' -- Create basic entities
+  ' -- Create camera to look from 15, 15, 15 to 0, 0, 0 
+  tbgl_entityCreateCamera(%scene, %eCamera)
+    tbgl_entitySetPos(%scene, %eCamera, 3, 3, 3)
+    tbgl_entitySetTargetPos(%scene, %eCamera, 0, 0, 0)  
+    
+  ' -- Create point light  
+  tbgl_entityCreateLight(%scene, %eLight)
+    tbgl_entitySetPos(%scene, %eLight, 15, 10, 5)
+
+  ' -- Create something to look at
+  tbgl_m15InitModelBuffers 10, 10000
+  tbgl_m15LoadModel "data/models/scooter.m15", "", 1, 1, %TBGL_NORMAL_PRECISE
+  
+  tbgl_entityCreateModelSlot(%scene, %eScooter, 0, 1)
+    tbgl_entitySetPos(%scene, %eScooter, 0, 0, 0)
+
+  ' -- Main loop
+  while tbgl_isWindow(hWnd) 
+    frameRate = tbgl_getFrameRate
+
+    tbgl_clearFrame 
+
+      tbgl_sceneRender(%scene)
+      
+    tbgl_drawFrame
+
+    ' -- ESCAPE key to exit application
+    if tbgl_getWindowKeyState(hWnd, %VK_ESCAPE) then exit while
+
+    if tbgl_getWindowKeyState(hWnd, %VK_LEFT) then
+      tbgl_entityTurn(%scene, %eScooter, 0,-90/frameRate, 0)
+    elseif tbgl_getWindowKeyState(hWnd, %VK_RIGHT) then
+      tbgl_entityTurn(%scene, %eScooter, 0, 90/frameRate, 0)
+    end if
+
+  wend
+
+  tbgl_destroyWindow
+end function
