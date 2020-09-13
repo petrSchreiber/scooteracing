@@ -1,0 +1,115 @@
+﻿uses "ui"
+uses "console"
+
+#include once "resourceManager.tbasicu"
+
+type tTrack
+
+  mStraight  as int32
+  mTurn      as int32
+  mSign      as int32
+  mTerrain   as int32
+  
+  dlTrack    as int32
+
+  function Load(fileName as string)
+    string modelPath = app_sourcepath+"data\Models\"
+    
+    ' -- Load resources
+    me.mStraight = gResourceManager.GetModelId()
+    me.mTurn     = gResourceManager.GetModelId()
+    me.mSign     = gResourceManager.GetModelId()
+    me.mTerrain  = gResourceManager.GetModelId()
+    
+    me.dlTrack   = gResourceManager.GetDListId()
+    
+    tbgl_m15LoadModel modelPath + "roadStraight.m15", "", me.mStraight, 0, %TBGL_NORMAL_PRECISE
+    tbgl_m15LoadModel modelPath + "roadTurn.m15", "", me.mTurn, 0, %TBGL_NORMAL_PRECISE
+    tbgl_m15LoadModel modelPath + "roadSign.m15", "", me.mSign, 0, %TBGL_NORMAL_PRECISE
+    tbgl_m15LoadModel modelPath + "terrain.m15", "", me.mTerrain, 0, %TBGL_NORMAL_PRECISE
+    
+    ' -- Create display list of track
+    int32 nWidth, nHeight
+    
+    Canvas_BitmapGetFileInfo(fileName, nWidth, nHeight)
+    printl nWidth, nHeight 
+    dword hBitmap = Canvas_BitmapLoad(fileName, nWidth, nHeight)
+    Canvas_Attach(hBitmap, 0, 0)
+    
+    %COLOR_TERRAIN = rgb(34, 177, 76)
+    %COLOR_ROAD    = rgb(195, 195, 195)
+    %COLOR_START   = rgb(255, 127, 39)
+    %COLOR_FINISH  = rgb(237, 28, 36)
+    int32 x, y
+    
+    tbgl_newList me.dlTrack
+    for x = 1 to nWidth
+      for y = 1 to nHeight
+        
+        tbgl_pushMatrix
+          tbgl_translate x*16-(nWidth*16)/2, 0, y*16-(nHeight*16)/2
+          tbgl_scale 2
+          if Canvas_GetPixel(x, y) = %COLOR_TERRAIN then
+            tbgl_pushcolor 255, 255, 255
+              tbgl_m15DrawModel me.mTerrain
+            tbgl_popColor
+          elseif Canvas_GetPixel(x, y) = %COLOR_ROAD then
+            
+            if Canvas_GetPixel(x-1, y) = %COLOR_ROAD and Canvas_GetPixel(x, y+1) = %COLOR_ROAD then
+              tbgl_rotate 180, 0, 1, 0
+              tbgl_m15DrawModel me.mTurn
+
+            elseif Canvas_GetPixel(x+1, y) = %COLOR_ROAD and Canvas_GetPixel(x, y-1) = %COLOR_ROAD then
+              tbgl_m15DrawModel me.mTurn
+              
+            elseif Canvas_GetPixel(x-1, y) = %COLOR_ROAD and Canvas_GetPixel(x, y-1) = %COLOR_ROAD then
+              tbgl_rotate 90, 0, 1, 0
+              tbgl_m15DrawModel me.mTurn
+
+            elseif Canvas_GetPixel(x+1, y) = %COLOR_ROAD and Canvas_GetPixel(x, y+1) = %COLOR_ROAD then
+              tbgl_rotate 270, 0, 1, 0
+              tbgl_m15DrawModel me.mTurn
+
+            elseif Canvas_GetPixel(x, y+1) = %COLOR_ROAD or Canvas_GetPixel(x, y-1) = %COLOR_ROAD then
+              tbgl_m15DrawModel me.mStraight
+            elseif Canvas_GetPixel(x+1, y) = %COLOR_ROAD or Canvas_GetPixel(x-1, y) = %COLOR_ROAD then
+              tbgl_rotate 90, 0, 1, 0
+              tbgl_m15DrawModel me.mStraight
+            end if  
+          
+          elseif Canvas_GetPixel(x, y) = %COLOR_START then
+            if Canvas_GetPixel(x+1, y) = %COLOR_ROAD then
+              tbgl_rotate 90, 0, 1, 0
+            elseif Canvas_GetPixel(x-1, y) = %COLOR_ROAD then
+              tbgl_rotate 270, 0, 1, 0
+            end if
+            tbgl_m15DrawModel me.mSign
+          elseif Canvas_GetPixel(x, y) = %COLOR_FINISH then
+            if Canvas_GetPixel(x+1, y) = %COLOR_ROAD then
+              tbgl_rotate 90, 0, 1, 0
+            elseif Canvas_GetPixel(x-1, y) = %COLOR_ROAD then
+              tbgl_rotate 270, 0, 1, 0
+            end if
+          
+            tbgl_m15DrawModel me.mSign
+          end if
+        tbgl_popMatrix
+
+      next
+  
+    next
+    
+    tbgl_endList
+    
+    
+   ' waitkey
+    
+    ' -- Free resources
+    gResourceManager.FreeModelId(me.mStraight)
+    gResourceManager.FreeModelId(me.mTurn)
+    gResourceManager.FreeModelId(me.mSign)
+    
+    return me.dlTrack
+  end function
+
+end type

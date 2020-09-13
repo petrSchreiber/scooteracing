@@ -1,0 +1,81 @@
+﻿%RESOURCE_MANAGER_MODEL_LIMIT = 32
+%RESOURCE_MANAGER_DLIST_LIMIT = 32
+
+type tResourceManager
+
+  modelId(%RESOURCE_MANAGER_MODEL_LIMIT) as int32
+  modelIdCount  as int32
+
+  dListId(%RESOURCE_MANAGER_DLIST_LIMIT) as int32
+  dListIdCount  as int32
+    
+  function _create()
+    tbgl_m15InitModelBuffers %RESOURCE_MANAGER_MODEL_LIMIT, 10000
+  end function
+  
+  function errorMessage(message as string)
+    msgbox 0, message + $CRLF(2) + "Application will terminate.", %MB_ICONERROR, "ResourceManager"
+    stop
+  end function
+  
+  function GetModelId() as int32
+    int32 i
+    for i = 1 to ubound(me.modelId)
+      if me.modelId(i) = False then
+        me.modelId(i) = True
+        me.modelIdCount += 1
+        return i
+      end if
+    next
+    
+    me.errorMessage("Requesting more models than ResourceManager can provide now")
+  end function
+
+  function FreeModelId(modelId as int32) as int32
+    if outside(modelId, 1, %RESOURCE_MANAGER_MODEL_LIMIT) then
+      me.errorMessage("Requesting to release model which does not exist: #" + format$(modelId))
+    end if
+    
+    if me.modelId(modelId) then
+      tbgl_m15ClearModel modelId
+      me.modelId(modelId) = False
+    end if
+    
+    me.modelIdCount = 0
+    for i as int32 = 1 to ubound(me.modelId)
+      me.modelIdCount += iif(me.modelId(i) <> False, 1, 0)
+    next
+  end function
+  
+  function GetDListId() as int32
+    int32 i
+    for i = 1 to ubound(me.dListId)
+      if me.dListId(i) = False then
+        me.dListId(i) = True
+        me.dListIdCount += 1
+        return i
+      end if
+    next
+    
+    me.errorMessage("Requesting more display lists than ResourceManager can provide now")
+  end function
+
+  function FreeDListId(dListId as int32) as int32
+    if outside(dListId, 1, %RESOURCE_MANAGER_DLIST_LIMIT) then
+      me.errorMessage("Requesting to release display list which does not exist: #" + format$(dListId))
+    end if
+    
+    if me.modelId(dListId) then
+      tbgl_deleteList(dListId)
+      me.modelId(dListId) = False
+    end if
+    
+    me.modelIdCount = 0
+    for i as int32 = 1 to ubound(me.dListId)
+      me.dListIdCount += iif(me.dListId(i) <> False, 1, 0)
+    next
+  end function
+
+end type
+
+global gResourceManager as tResourceManager()

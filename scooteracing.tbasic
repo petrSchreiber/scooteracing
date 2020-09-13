@@ -1,6 +1,9 @@
-﻿uses "tbgl"
+﻿uses "tbgl", "tbdi"
 
+#include once "data/game/resourceManager.tbasicu"
 #include "offScreenRenderer/offScreenRenderer8b.tbasicu"
+#include "data/game/track.tbasicu"
+
 
 begin const
   ' -- Scene IDs
@@ -9,7 +12,9 @@ begin const
   ' -- Entity IDs 
   %eCamera = 1
   %eLight
+  %eScooterPivot
   %eScooter
+  %eTrack
 end const
 
 function tbMain()
@@ -19,47 +24,80 @@ function tbMain()
   ' -- Create and show window
   dWord hWnd = tbgl_createWindowEx("Scooteracing - press ESC to quit", 800, 600, 32, %TBGL_WS_WINDOWED | %TBGL_WS_CLOSEBOX)
   tbgl_showWindow
+  
+  tbdi_init(hWnd)
+  TBDI_JoySetDeadZoneXYZ(0, 5) 
 
   ' -- Create scene
   tbgl_sceneCreate(%scene)
 
-  ' -- Create basic entities
-  ' -- Create camera to look from 15, 15, 15 to 0, 0, 0 
-  tbgl_entityCreateCamera(%scene, %eCamera)
-    tbgl_entitySetPos(%scene, %eCamera, 3, 3, 3)
-    tbgl_entitySetTargetPos(%scene, %eCamera, 0, 0, 0)  
     
   ' -- Create point light  
-  tbgl_entityCreateLight(%scene, %eLight)
-    tbgl_entitySetPos(%scene, %eLight, 15, 10, 5)
+  tbgl_entityCreateLight(%scene, %eLight, 0, %TBGL_LIGHTTYPE_DIRECTIONAL)
+    tbgl_entityTurn(%scene, %eLight, 90, 45, 0)
 
   ' -- Create something to look at
-  tbgl_m15InitModelBuffers 10, 10000
-  tbgl_m15LoadModel "data/models/scooter.m15", "", 1, 1, %TBGL_NORMAL_PRECISE
+
+  int32 scooterModel = gResourceManager.getModelId()
+  tbgl_m15LoadModel "data/models/scooter.m15", "", scooterModel, 0, %TBGL_NORMAL_PRECISE
   
-  tbgl_entityCreateModelSlot(%scene, %eScooter, 0, 1)
+  tbgl_entityCreatePivot(%scene, %eScooterPivot, 0)
+  
+  tbgl_entityCreateModelSlot(%scene, %eScooter, %eScooterPivot, scooterModel)
     tbgl_entitySetPos(%scene, %eScooter, 0, 0, 0)
+    
+  tbgl_entityCreateCamera(%scene, %eCamera, %eScooter)
+    tbgl_entitySetPos(%scene, %eCamera, 0, 2.5, -5)
+    tbgl_entitySetTargetPos(%scene, %eCamera, 0, 1, 0)
+    
+    
+  dim track as tTrack
+  int32 dlTrack = track.Load(app_sourcepath+"data\tracks\Compacteo.bmp")
+  tbgl_entityCreateDLSlot(%scene, %eTrack, 0, dlTrack)
 
   dim osr as offScreenRenderer8b
   long width, height
   tbgl_getWindowClient(hWnd, width, height)
-  osr.buildBuffer(width/6, height/6, %OSR_NEAREST_NEIGHBOUR)
-
+  osr.buildBuffer(width/4, height/4, %OSR_NEAREST_NEIGHBOUR)
+  
+  single cx, cy, cz
+  single sx, sy, sz
+  single tx, ty, tz
+  
+  single speed
+  single gas, steer
   ' -- Main loop
   while tbgl_isWindow(hWnd) 
     frameRate = tbgl_getFrameRate
     
+    tbgl_entitySetPos(%scene, %eCamera, 0, 2.5, -5-speed/10)
+
+    'tbgl_entityGetPos(%scene, %eCamera, cx, cy, cz)
+    'tbgl_entityGetPos(%scene, %eScooter, sx, sy, sz)
+    'tbgl_entityTrackPos(%scene, %eScooter, 0, 1, -5, tx, ty, tz)
+    
+    
+    'if dist(cx, cz, tx, tz)  then
+    '  tbgl_EntityPush(%scene, %eCamera, 0, 0, dist(cx, cz, tx, tz)/FrameRate )'speed*(tx-cx)/FrameRate, 0, speed*(tz-cz)/FrameRate)
+    'tbgl_entitySetTargetPos(%scene, %eCamera, tx, ty+1, tz)  
+    'end if
+    
     osr.beginRender()
       tbgl_renderMatrix3D
       tbgl_clearFrame 
-      
+'tbgl_polygonLook %GL_LINE
+'tbgl_linewidth 1
+
         tbgl_sceneRender(%scene)
+
+'tbgl_polygonLook %GL_FILL
     osr.endRender()
       
     tbgl_renderMatrix2D(0, 0, 1, 1)
     tbgl_clearFrame
       tbgl_pushColor 255,255,255
       tbgl_pushState %TBGL_TEXTURING
+      tbgl_pushStateProtect %TBGL_LIGHTING
         osr.bindTexture()
         tbgl_beginPoly %GL_QUADS
           tbgl_texCoord2d 0, 0: tbgl_vertex 0, 0
@@ -67,6 +105,7 @@ function tbMain()
           tbgl_texCoord2d 1, 1: tbgl_vertex 1, 1
           tbgl_texCoord2d 0, 1: tbgl_vertex 0, 1
         tbgl_endPoly
+      tbgl_popStateProtect
       tbgl_popState
       tbgl_popColor
       
@@ -74,13 +113,46 @@ function tbMain()
 
     ' -- ESCAPE key to exit application
     if tbgl_getWindowKeyState(hWnd, %VK_ESCAPE) then exit while
-
-    if tbgl_getWindowKeyState(hWnd, %VK_LEFT) then
-      tbgl_entityTurn(%scene, %eScooter, 0,-90/frameRate, 0)
-    elseif tbgl_getWindowKeyState(hWnd, %VK_RIGHT) then
-      tbgl_entityTurn(%scene, %eScooter, 0, 90/frameRate, 0)
+    
+    
+    gas   = -TBDI_Joyz(0)
+    steer = -TBDI_JoyX(0)
+    
+    printl gas, steer
+    if gas = 0 then
+      speed -= 15/frameRate
+    else
+      speed += ((gas/1024)*10)/frameRate
     end if
-
+    
+    if speed then tbgl_entityTurn(%scene, %eScooterPivot, 0, steer/1024*((50-speed)/27)*135/frameRate, 0)
+    if steer then tbgl_entitySetRot(%scene, %eScooter, 0, 0, -steer * (speed/27) / 1024 * 25)
+    'if TBDI_JoyX(0) then
+      
+    'end if
+    
+    if speed then
+      if tbgl_getWindowKeyState(hWnd, %VK_LEFT) then
+        tbgl_entityTurn(%scene, %eScooter, 0, ((50-speed)/27)*90/frameRate, 0)
+      elseif tbgl_getWindowKeyState(hWnd, %VK_RIGHT) then
+        tbgl_entityTurn(%scene, %eScooter, 0,-((50-speed)/27)*90/frameRate, 0)
+      end if
+    end if
+'
+'    if tbgl_getWindowKeyState(hWnd, %VK_UP) then
+'      speed += 10/frameRate
+'      if speed > 27 then speed = 27
+'    elseif tbgl_getWindowKeyState(hWnd, %VK_DOWN) then
+'      speed -= 10/frameRate
+'    else
+'      speed -= 15/frameRate
+'      if speed < 0 then speed = 0
+'    end if
+    
+    
+    if speed > 27 then speed = 27
+    if speed < 0 then speed = 0
+    tbgl_entityPush(%scene, %eScooterPivot, 0, 0,speed/frameRate)
   wend
 
   tbgl_destroyWindow
