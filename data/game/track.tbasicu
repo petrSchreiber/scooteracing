@@ -12,6 +12,10 @@ type tTrack
   
   dlTrack    as int32
 
+  function private_IsRoad(x as int32, y as int32) as int32
+    return in(Canvas_GetPixel(x, y), %COLOR_ROAD, %COLOR_START, %COLOR_FINISH) > 0
+  end function
+  
   function Load(fileName as string)
     string modelPath = app_sourcepath+"data\Models\"
     
@@ -48,31 +52,31 @@ type tTrack
         
         tbgl_pushMatrix
           tbgl_translate x*16-(nWidth*16)/2, 0, y*16-(nHeight*16)/2
-          tbgl_scale 2
+         
           if Canvas_GetPixel(x, y) = %COLOR_TERRAIN then
-            tbgl_pushcolor 255, 255, 255
               tbgl_m15DrawModel me.mTerrain
-            tbgl_popColor
+
           elseif Canvas_GetPixel(x, y) = %COLOR_ROAD then
             
-            if Canvas_GetPixel(x-1, y) = %COLOR_ROAD and Canvas_GetPixel(x, y+1) = %COLOR_ROAD then
+            if me.private_IsRoad(x-1, y) and me.private_IsRoad(x, y+1) then
               tbgl_rotate 180, 0, 1, 0
               tbgl_m15DrawModel me.mTurn
 
-            elseif Canvas_GetPixel(x+1, y) = %COLOR_ROAD and Canvas_GetPixel(x, y-1) = %COLOR_ROAD then
+            elseif me.private_IsRoad(x+1, y) and me.private_IsRoad(x, y-1) then
               tbgl_m15DrawModel me.mTurn
               
-            elseif Canvas_GetPixel(x-1, y) = %COLOR_ROAD and Canvas_GetPixel(x, y-1) = %COLOR_ROAD then
+            elseif me.private_IsRoad(x-1, y) and me.private_IsRoad(x, y-1) then
               tbgl_rotate 90, 0, 1, 0
               tbgl_m15DrawModel me.mTurn
 
-            elseif Canvas_GetPixel(x+1, y) = %COLOR_ROAD and Canvas_GetPixel(x, y+1) = %COLOR_ROAD then
+            elseif me.private_IsRoad(x+1, y) and me.private_IsRoad(x, y+1) then
               tbgl_rotate 270, 0, 1, 0
               tbgl_m15DrawModel me.mTurn
 
-            elseif Canvas_GetPixel(x, y+1) = %COLOR_ROAD or Canvas_GetPixel(x, y-1) = %COLOR_ROAD then
+            elseif me.private_IsRoad(x, y+1) and me.private_IsRoad(x, y-1) then
               tbgl_m15DrawModel me.mStraight
-            elseif Canvas_GetPixel(x+1, y) = %COLOR_ROAD or Canvas_GetPixel(x-1, y) = %COLOR_ROAD then
+              
+            elseif me.private_IsRoad(x+1, y) and me.private_IsRoad(x-1, y) then
               tbgl_rotate 90, 0, 1, 0
               tbgl_m15DrawModel me.mStraight
             end if  
@@ -83,7 +87,9 @@ type tTrack
             elseif Canvas_GetPixel(x-1, y) = %COLOR_ROAD then
               tbgl_rotate 270, 0, 1, 0
             end if
+            
             tbgl_m15DrawModel me.mSign
+            
           elseif Canvas_GetPixel(x, y) = %COLOR_FINISH then
             if Canvas_GetPixel(x+1, y) = %COLOR_ROAD then
               tbgl_rotate 90, 0, 1, 0
@@ -100,9 +106,6 @@ type tTrack
     next
     
     tbgl_endList
-    
-    
-   ' waitkey
     
     ' -- Free resources
     gResourceManager.FreeModelId(me.mStraight)

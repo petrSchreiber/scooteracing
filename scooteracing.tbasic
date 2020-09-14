@@ -114,7 +114,6 @@ function tbMain()
     ' -- ESCAPE key to exit application
     if tbgl_getWindowKeyState(hWnd, %VK_ESCAPE) then exit while
     
-    
     gas   = -TBDI_Joyz(0)
     steer = -TBDI_JoyX(0)
     
@@ -147,17 +146,6 @@ function tbMain()
         tbgl_entityTurn(%scene, %eScooter, 0,-((50-speed)/27)*90/frameRate, 0)
       end if
     end if
-'
-'    if tbgl_getWindowKeyState(hWnd, %VK_UP) then
-'      speed += 10/frameRate
-'      if speed > 27 then speed = 27
-'    elseif tbgl_getWindowKeyState(hWnd, %VK_DOWN) then
-'      speed -= 10/frameRate
-'    else
-'      speed -= 15/frameRate
-'      if speed < 0 then speed = 0
-'    end if
-    
     
     if speed > 27 then speed = 27
     if speed < 0 then speed = 0
