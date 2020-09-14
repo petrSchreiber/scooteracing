@@ -52,7 +52,7 @@ function tbMain()
     
     
   dim track as tTrack
-  int32 dlTrack = track.Load(app_sourcepath+"data\tracks\Compacteo.bmp")
+  int32 dlTrack = track.Load(app_sourcepath+"data\tracks\Curly.bmp")
   tbgl_entityCreateDLSlot(%scene, %eTrack, 0, dlTrack)
 
   dim osr as offScreenRenderer8b
@@ -64,7 +64,7 @@ function tbMain()
   single sx, sy, sz
   single tx, ty, tz
   
-  single speed
+  single speed, inclination
   single gas, steer
   ' -- Main loop
   while tbgl_isWindow(hWnd) 
@@ -125,11 +125,20 @@ function tbMain()
       speed += ((gas/1024)*10)/frameRate
     end if
     
+    if steer = 0 then
+      inclination -= (inclination*2) / frameRate
+    else
+      inclination += ((steer/1024)*90)/frameRate
+    end if
+    
+    if inclination > 25 then inclination = 25
+    if inclination < -25 then inclination = -25
+
+    
     if speed then tbgl_entityTurn(%scene, %eScooterPivot, 0, steer/1024*((50-speed)/27)*135/frameRate, 0)
-    if steer then tbgl_entitySetRot(%scene, %eScooter, 0, 0, -steer * (speed/27) / 1024 * 25)
-    'if TBDI_JoyX(0) then
-      
-    'end if
+    tbgl_entitySetRot(%scene, %eScooter, 0, 0, -inclination * (speed/27) )
+    
+    tbgl_entitySetRot(%scene, %eCamera, 0, 0, inclination/2 * (speed/27) )    
     
     if speed then
       if tbgl_getWindowKeyState(hWnd, %VK_LEFT) then
