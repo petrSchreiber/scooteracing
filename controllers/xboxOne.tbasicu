@@ -1,0 +1,26 @@
+﻿uses "tbdi"
+
+type tXboxOneController
+  static tbdiInitialized as int32
+
+  controllerId as int32
+
+  function _create(hWnd as dword, controllerId as int32)
+    me.controllerId = controllerId-1
+    
+    if me.tbdiInitialized = 0 then
+      tbdi_init(hWnd)
+      me.tbdiInitialized = 1
+    end if
+    
+    TBDI_JoySetDeadZoneXYZ(me.controllerId, 5)
+  end function
+  
+  function GetGas() as Float64
+    return -TBDI_Joyz(me.controllerId)/1024
+  end function
+  
+  function GetSteer() as Float64
+    return -TBDI_JoyX(me.controllerId)/1024
+  end function
+end type

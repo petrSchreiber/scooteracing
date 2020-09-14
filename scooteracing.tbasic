@@ -2,6 +2,7 @@
 
 #include once "data/game/resourceManager.tbasicu"
 #include "offScreenRenderer/offScreenRenderer8b.tbasicu"
+#include "controllers/xboxOne.tbasicu"
 #include "data/game/track.tbasicu"
 
 
@@ -24,9 +25,9 @@ function tbMain()
   ' -- Create and show window
   dWord hWnd = tbgl_createWindowEx("Scooteracing - press ESC to quit", 800, 600, 32, %TBGL_WS_WINDOWED | %TBGL_WS_CLOSEBOX)
   tbgl_showWindow
-  
-  tbdi_init(hWnd)
-  TBDI_JoySetDeadZoneXYZ(0, 5) 
+
+
+  dim playerOneController as tXBoxOneController(hWnd, 1)
 
   ' -- Create scene
   tbgl_sceneCreate(%scene)
@@ -114,27 +115,27 @@ function tbMain()
     ' -- ESCAPE key to exit application
     if tbgl_getWindowKeyState(hWnd, %VK_ESCAPE) then exit while
     
-    gas   = -TBDI_Joyz(0)
-    steer = -TBDI_JoyX(0)
+    gas   = playerOneController.GetGas()
+    steer = playerOneController.GetSteer()
     
     printl gas, steer
     if gas = 0 then
       speed -= 15/frameRate
     else
-      speed += ((gas/1024)*10)/frameRate
+      speed += (gas*10)/frameRate
     end if
     
     if steer = 0 then
       inclination -= (inclination*2) / frameRate
     else
-      inclination += ((steer/1024)*90)/frameRate
+      inclination += (steer*90)/frameRate
     end if
     
     if inclination > 25 then inclination = 25
     if inclination < -25 then inclination = -25
 
     
-    if speed then tbgl_entityTurn(%scene, %eScooterPivot, 0, steer/1024*((50-speed)/27)*135/frameRate, 0)
+    if speed then tbgl_entityTurn(%scene, %eScooterPivot, 0, steer*((50-speed)/27)*135/frameRate, 0)
     tbgl_entitySetRot(%scene, %eScooter, 0, 0, -inclination * (speed/27) )
     
     tbgl_entitySetRot(%scene, %eCamera, 0, 0, inclination/2 * (speed/27) )    
