@@ -5,7 +5,7 @@ type tXboxOneController
 
   controllerId as int32
 
-  function _create(hWnd as dword, controllerId as int32)
+  function Initialize(hWnd as dword, controllerId as int32)
     me.controllerId = controllerId-1
     
     if me.tbdiInitialized = 0 then

@@ -1,0 +1,81 @@
+﻿
+type tScooterRacer
+
+  modelId as int32
+  
+  scene        as int32
+  pivotEntity  as int32
+  entity       as int32
+  cameraEntity as int32
+  
+  gas         as Float32
+  speed       as Float32
+  
+  steer       as Float32
+  inclination as Float32
+
+  function Load(modelFile as string)
+    me.modelId = gResourceManager.getModelId()
+    tbgl_m15LoadModel modelFile, "", me.modelId, 0, %TBGL_NORMAL_PRECISE
+  end function
+  
+  function ToEntity(scene as int32) as int32
+    me.scene = scene
+    me.pivotEntity = tbgl_entityGetFreeID(me.scene)
+    tbgl_entityCreatePivot(me.scene, me.pivotEntity, 0)
+  
+    me.entity = tbgl_entityGetFreeID(me.scene)
+    tbgl_entityCreateModelSlot(me.scene, me.entity, me.pivotEntity, me.modelId)
+      tbgl_entitySetPos(me.scene, me.entity, 0, 0, 0)
+      
+    me.cameraEntity = tbgl_entityGetFreeID(me.scene)
+    tbgl_entityCreateCamera(me.scene, me.cameraEntity, me.entity)
+      tbgl_entitySetPos(me.scene, me.cameraEntity, 0, 2.5, -5)
+      tbgl_entitySetTargetPos(me.scene, me.cameraEntity, 0, 1, 0)
+  end function
+  
+  function ProcessInput(controller as tXBoxOneController)
+    
+    me.gas = controller.GetGas()
+    me.steer = controller.GetSteer()
+
+  end function
+  
+  function ApplyInput(frameRate as float64)
+
+    if me.gas = 0 then
+      me.speed -= 15/frameRate
+    else
+      me.speed += (me.gas*10)/frameRate
+    end if
+    if me.speed > 27 then me.speed = 27
+    if me.speed < 0 then me.speed = 0
+    
+    if me.steer = 0 then
+      me.inclination -= (me.inclination*2) / frameRate
+    else
+      me.inclination += (me.steer*90)/frameRate
+    end if
+    if me.inclination > 25 then me.inclination = 25
+    if me.inclination < -25 then me.inclination = -25
+    
+    if me.speed then tbgl_entityTurn(me.scene, me.pivotEntity, 0, me.steer*((50-me.speed)/27)*135/frameRate, 0)
+    tbgl_entitySetRot(me.scene, me.entity, 0, 0, -me.inclination * (me.speed/27) )
+    
+    if me.cameraEntity then
+      tbgl_entitySetRot(me.scene, me.cameraEntity, 0, 0, me.inclination/2 * (me.speed/27) )
+      tbgl_entitySetPos(me.scene, me.cameraEntity, 0, 2.5, -5-me.speed/10)
+    end if
+    
+    tbgl_entityPush(me.scene, me.pivotEntity, 0, 0, me.speed/frameRate)
+    
+  end function
+  
+  function Release()
+    if me.modelId then
+      gResourceManager.freeModelId(me.modelId)
+      me.modelId = 0
+    end if
+  end function
+  
+end type
