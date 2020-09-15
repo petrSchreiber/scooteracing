@@ -26,9 +26,9 @@ function tbMain()
   dWord hWnd = tbgl_createWindowEx("Scooteracing - press ESC to quit", ScreenWidth, ScreenHeight, 32, %TBGL_WS_WINDOWED | %TBGL_WS_CLOSEBOX)
   tbgl_showWindow
 
-  dim playerOneController, playerTwoController as tXBoxOneController
-  playerOneController.Initialize(hWnd, 1)
-  playerTwoController.Initialize(hWnd, 2)
+  dim playerController(2) as tXBoxOneController
+  playerController(1).Initialize(hWnd, 1)
+  playerController(2).Initialize(hWnd, 2)
 
   ' -- Create scene
   tbgl_sceneCreate(%scene)
@@ -42,21 +42,18 @@ function tbMain()
   int32 dlTrack = track.Load(app_sourcepath+"data\tracks\Curly.bmp")
   tbgl_entityCreateDLSlot(%scene, %eTrack, 0, dlTrack)
 
-
-  dim player1 as tScooterRacer
-  player1.Load("data/models/scooter.m15")
-  player1.ToEntity(%scene)
-    
-  dim player2 as tScooterRacer
-  player2.Load("data/models/scooter.m15")
-  player2.ToEntity(%scene)
+  dim player(2) as tScooterRacer
+  player(1).Load("data/models/scooter.m15")
+  player(1).ToEntity(%scene)
   
-  dim osr as offScreenRenderer8b
-  dim osr2 as offScreenRenderer8b
+  player(2).Load("data/models/scooter.m15")
+  player(2).ToEntity(%scene)
+  
+  dim osr(2) as offScreenRenderer8b
   long width, height
   tbgl_getWindowClient(hWnd, width, height)
-  osr.buildBuffer(width/4, height/4, %OSR_NEAREST_NEIGHBOUR)
-  osr2.buildBuffer(width/4, height/4, %OSR_NEAREST_NEIGHBOUR)
+  osr(1).buildBuffer(width/4, height/4, %OSR_NEAREST_NEIGHBOUR)
+  osr(2).buildBuffer(width/4, height/4, %OSR_NEAREST_NEIGHBOUR)
   
   single cx, cy, cz
   single sx, sy, sz
@@ -64,30 +61,25 @@ function tbMain()
   
   single speed, inclination
   single gas, steer
+  single screenOffset
   
   tbgl_backColor 64,128,255
   
+  int32 i
   ' -- Main loop
   while tbgl_isWindow(hWnd) 
     frameRate = tbgl_getFrameRate
     
-    osr.beginRender()
-      tbgl_renderMatrix3D
-      tbgl_clearFrame
-        
-        player1.EnforceCamera()
-        tbgl_sceneRender(%scene)
+    for i = 1 to 2
+      osr(i).beginRender()
+        tbgl_renderMatrix3D
+        tbgl_clearFrame
+          
+          player(i).EnforceCamera()
+          tbgl_sceneRender(%scene)
 
-    osr.endRender()
-    
-    osr2.beginRender()
-      tbgl_renderMatrix3D
-      tbgl_clearFrame
-        
-        player2.EnforceCamera()
-        tbgl_sceneRender(%scene)
-
-    osr2.endRender()    
+      osr(i).endRender()
+    next
       
     tbgl_renderMatrix2D(0, 0, 1, 1)
     tbgl_clearFrame
@@ -95,24 +87,18 @@ function tbMain()
       tbgl_pushColor 255,255,255
         tbgl_pushState %TBGL_TEXTURING
           tbgl_pushStateProtect %TBGL_LIGHTING
-          
-            osr.bindTexture()
-
-            tbgl_beginPoly %GL_QUADS
-              tbgl_texCoord2d 0, 0.0: tbgl_vertex 0, 0.5
-              tbgl_texCoord2d 1, 0.0: tbgl_vertex 1, 0.5
-              tbgl_texCoord2d 1, 0.5: tbgl_vertex 1, 1
-              tbgl_texCoord2d 0, 0.5: tbgl_vertex 0, 1
-            tbgl_endPoly
-
-            osr2.bindTexture()
-
-            tbgl_beginPoly %GL_QUADS
-              tbgl_texCoord2d 0, 0.0: tbgl_vertex 0, 0.0
-              tbgl_texCoord2d 1, 0.0: tbgl_vertex 1, 0.0
-              tbgl_texCoord2d 1, 0.5: tbgl_vertex 1, 0.5
-              tbgl_texCoord2d 0, 0.5: tbgl_vertex 0, 0.5
-            tbgl_endPoly
+            
+            for i = 1 to 2
+              osr(i).bindTexture()
+              
+              screenOffset = - (i-1)*0.5
+              tbgl_beginPoly %GL_QUADS
+                tbgl_texCoord2d 0, 0.0: tbgl_vertex 0, 0.5 + screenOffset
+                tbgl_texCoord2d 1, 0.0: tbgl_vertex 1, 0.5 + screenOffset
+                tbgl_texCoord2d 1, 0.5: tbgl_vertex 1, 1.0 + screenOffset
+                tbgl_texCoord2d 0, 0.5: tbgl_vertex 0, 1.0 + screenOffset
+              tbgl_endPoly
+            next
             
           tbgl_popStateProtect
         tbgl_popState
@@ -123,11 +109,10 @@ function tbMain()
     ' -- ESCAPE key to exit application
     if tbgl_getWindowKeyState(hWnd, %VK_ESCAPE) then exit while
     
-    player1.ProcessInput(playerOneController)
-    player1.ApplyInput(frameRate)
-
-    player2.ProcessInput(playerTwoController)
-    player2.ApplyInput(frameRate)
+    for i = 1 to 2
+      player(i).ProcessInput(playerController(i))
+      player(i).ApplyInput(frameRate)
+    next
 
   wend
 
