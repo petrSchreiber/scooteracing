@@ -65,9 +65,9 @@ function tbMain()
   osr(1).buildBuffer(width/4, height/4, %OSR_NEAREST_NEIGHBOUR)
   osr(2).buildBuffer(width/4, height/4, %OSR_NEAREST_NEIGHBOUR)
   
-  single cx, cy, cz
-  single sx, sy, sz
-  single tx, ty, tz
+  single p1x, p1y, p1z
+  single p2x, p2y, p2z
+  single distance
   
   single speed, inclination
   single gas, steer
@@ -79,6 +79,7 @@ function tbMain()
   ' -- Main loop
   while tbgl_isWindow(hWnd) 
     frameRate = tbgl_getFrameRate
+    tbgl_setWindowTitle(hWnd, format$(frameRate, "#.00"))
     
     for i = 1 to 2
       osr(i).beginRender()
@@ -123,6 +124,23 @@ function tbMain()
       player(i).ProcessInput(playerController(i))
       player(i).ApplyInput(frameRate, track)
     next
+    
+    tbgl_entityGetPos(%scene, player(1).pivotEntity, p1x, p1y, p1z)
+    tbgl_entityGetPos(%scene, player(2).pivotEntity, p2x, p2y, p2z)
+    
+    distance = dist(p1x, p1z, p2x, p2z)
+    printl distance
+    if distance < 1.5 then
+      p1x += ((p1x-p2x)*2)/framerate
+      p1z += ((p1z-p2z)*2)/framerate
+      
+      p2x -= ((p1x-p2x)*2)/framerate
+      p2z -= ((p1z-p2z)*2)/framerate
+      
+      tbgl_entitysetPos(%scene, player(1).pivotEntity, p1x, p1y, p1z)
+      tbgl_entitysetPos(%scene, player(2).pivotEntity, p2x, p2y, p2z)
+      
+    end if
 
   wend
 

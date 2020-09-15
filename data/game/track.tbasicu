@@ -42,7 +42,7 @@ type tTrack
     
     ' -- Create display list of track
     Canvas_BitmapGetFileInfo(fileName, me.nWidth, me.nHeight)
-    printl me.nWidth, me.nHeight 
+    
     me.hBitmap = Canvas_BitmapLoad(fileName, me.nWidth, me.nHeight)
     Canvas_Attach(me.hBitmap, 0, 0)
     
@@ -66,6 +66,7 @@ type tTrack
               tbgl_m15DrawModel me.mTerrain
 
           elseif Canvas_GetPixel(x, y) = %COLOR_TERRAIN_TREE then
+              tbgl_rotate 0, rnd(0,360),0'*90,0
               tbgl_m15DrawModel me.mTerrainTree
 
           elseif Canvas_GetPixel(x, y) = %COLOR_ROAD then
@@ -109,9 +110,9 @@ type tTrack
     
     ' -- Free resources
     gResourceManager.FreeModelId(me.mRoad)
-   ' gResourceManager.FreeModelId(me.mTurn)
     gResourceManager.FreeModelId(me.mSign)
     gResourceManager.FreeModelId(me.mTerrain)
+    gResourceManager.FreeModelId(me.mTerrainTree)
     
     return me.dlTrack
   end function
@@ -120,7 +121,7 @@ type tTrack
     Canvas_Attach(me.hBitmap, 0, 0)
     int32 x = ((me.nWidth*8)/2 + worldX)/8
     int32 y = ((me.nHeight*8)/2 + worldZ)/8
-    printl x, y
+    
     return not in(Canvas_GetPixel(x, y), %COLOR_ROAD, %COLOR_START, %COLOR_FINISH)
   end function
 
