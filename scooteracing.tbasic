@@ -3,8 +3,8 @@
 #include once "data/game/resourceManager.tbasicu"
 #include once "offScreenRenderer/offScreenRenderer8b.tbasicu"
 #include once "controllers/xboxOne.tbasicu"
-#include once "racers/scooter.tbasicu"
 #include once "data/game/track.tbasicu"
+#include once "racers/scooter.tbasicu"
 
 begin const
   ' -- Scene IDs
@@ -73,7 +73,7 @@ function tbMain()
   single gas, steer
   single screenOffset
   
-  tbgl_backColor 64,128,255
+  tbgl_backColor 64, 128, 255
   
   int32 i
   ' -- Main loop
@@ -121,7 +121,7 @@ function tbMain()
     
     for i = 1 to 2
       player(i).ProcessInput(playerController(i))
-      player(i).ApplyInput(frameRate)
+      player(i).ApplyInput(frameRate, track)
     next
 
   wend

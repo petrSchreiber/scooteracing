@@ -54,12 +54,25 @@
 
   end function
   
-  function ApplyInput(frameRate as float64)
-
+  function ApplyInput(frameRate as float64, track as tTrack)
+    single x, y, z
+    tbgl_entityGetPos(me.scene, me.pivotEntity, x, y, z)
+    
+    single terrainPenalty = 1
+    if track.isTerrain(x, z) then terrainPenalty = 2
+    
     if me.gas = 0 then
       me.speed -= me.maxWind/frameRate
     else
-      me.speed += (me.gas*10)/frameRate
+      if not track.isTerrain(x, z) then
+        me.speed += (me.gas*10)/frameRate
+      else
+        if me.speed > 2 then
+          me.speed -= me.maxWind*4/frameRate
+        else
+          me.speed += (me.gas*1)/frameRate
+        end if
+      end if
     end if
     if me.speed > me.maxSpeed then me.speed = me.maxSpeed
     if me.speed < 0 then me.speed = 0

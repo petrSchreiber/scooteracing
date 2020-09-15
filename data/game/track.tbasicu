@@ -5,10 +5,10 @@ uses "console"
 
 type tTrack
 
-  mStraight  as int32
-  mTurn      as int32
+  mRoad  as int32
   mSign      as int32
   mTerrain   as int32
+  mTerrainTree   as int32
   
   dlTrack    as int32
   
@@ -16,6 +16,10 @@ type tTrack
   startZ     as single
   startRot   as single
 
+  hBitmap    as UInt32
+  nWidth     as uint32
+  nHeight    as uint32
+  
   function private_IsRoad(x as int32, y as int32) as int32
     return in(Canvas_GetPixel(x, y), %COLOR_ROAD, %COLOR_START, %COLOR_FINISH) > 0
   end function
@@ -24,68 +28,48 @@ type tTrack
     string modelPath = app_sourcepath+"data\Models\"
     
     ' -- Load resources
-    me.mStraight = gResourceManager.GetModelId()
-    me.mTurn     = gResourceManager.GetModelId()
+    me.mRoad = gResourceManager.GetModelId()
     me.mSign     = gResourceManager.GetModelId()
     me.mTerrain  = gResourceManager.GetModelId()
+    me.mTerrainTree  = gResourceManager.GetModelId()
     
     me.dlTrack   = gResourceManager.GetDListId()
     
-    tbgl_m15LoadModel modelPath + "roadStraight.m15", "", me.mStraight, 0, %TBGL_NORMAL_PRECISE
-    tbgl_m15LoadModel modelPath + "roadTurn.m15", "", me.mTurn, 0, %TBGL_NORMAL_PRECISE
-    tbgl_m15LoadModel modelPath + "roadSign.m15", "", me.mSign, 0, %TBGL_NORMAL_PRECISE
-    tbgl_m15LoadModel modelPath + "terrain.m15", "", me.mTerrain, 0, %TBGL_NORMAL_PRECISE
+    tbgl_m15LoadModel modelPath + "road8.m15", "", me.mRoad, 0, %TBGL_NORMAL_PRECISE
+    tbgl_m15LoadModel modelPath + "sign8.m15", "", me.mSign, 0, %TBGL_NORMAL_PRECISE
+    tbgl_m15LoadModel modelPath + "terrain8.m15", "", me.mTerrain, 0, %TBGL_NORMAL_PRECISE
+    tbgl_m15LoadModel modelPath + "terrain_tree8.m15", "", me.mTerrainTree, 0, %TBGL_NORMAL_PRECISE
     
     ' -- Create display list of track
-    int32 nWidth, nHeight
-    
-    Canvas_BitmapGetFileInfo(fileName, nWidth, nHeight)
-    printl nWidth, nHeight 
-    dword hBitmap = Canvas_BitmapLoad(fileName, nWidth, nHeight)
-    Canvas_Attach(hBitmap, 0, 0)
+    Canvas_BitmapGetFileInfo(fileName, me.nWidth, me.nHeight)
+    printl me.nWidth, me.nHeight 
+    me.hBitmap = Canvas_BitmapLoad(fileName, me.nWidth, me.nHeight)
+    Canvas_Attach(me.hBitmap, 0, 0)
     
     %COLOR_TERRAIN = rgb(34, 177, 76)
+    %COLOR_TERRAIN_TREE = rgb(181, 230, 29)
     %COLOR_ROAD    = rgb(195, 195, 195)
     %COLOR_START   = rgb(255, 127, 39)
     %COLOR_FINISH  = rgb(237, 28, 36)
     int32 x, y
     single tileX, tileZ
     tbgl_newList me.dlTrack
-    for x = 1 to nWidth
-      for y = 1 to nHeight
+    for x = 1 to me.nWidth
+      for y = 1 to me.nHeight
         
-        tileX = x*16-(nWidth*16)/2
-        tileZ = y*16-(nHeight*16)/2
+        tileX = x*8-(me.nWidth*8)/2
+        tileZ = y*8-(me.nHeight*8)/2
         tbgl_pushMatrix
           tbgl_translate tileX, 0, tileZ
          
           if Canvas_GetPixel(x, y) = %COLOR_TERRAIN then
               tbgl_m15DrawModel me.mTerrain
 
+          elseif Canvas_GetPixel(x, y) = %COLOR_TERRAIN_TREE then
+              tbgl_m15DrawModel me.mTerrainTree
+
           elseif Canvas_GetPixel(x, y) = %COLOR_ROAD then
-            
-            if me.private_IsRoad(x-1, y) and me.private_IsRoad(x, y+1) then
-              tbgl_rotate 180, 0, 1, 0
-              tbgl_m15DrawModel me.mTurn
-
-            elseif me.private_IsRoad(x+1, y) and me.private_IsRoad(x, y-1) then
-              tbgl_m15DrawModel me.mTurn
-              
-            elseif me.private_IsRoad(x-1, y) and me.private_IsRoad(x, y-1) then
-              tbgl_rotate 90, 0, 1, 0
-              tbgl_m15DrawModel me.mTurn
-
-            elseif me.private_IsRoad(x+1, y) and me.private_IsRoad(x, y+1) then
-              tbgl_rotate 270, 0, 1, 0
-              tbgl_m15DrawModel me.mTurn
-
-            elseif me.private_IsRoad(x, y+1) and me.private_IsRoad(x, y-1) then
-              tbgl_m15DrawModel me.mStraight
-              
-            elseif me.private_IsRoad(x+1, y) and me.private_IsRoad(x-1, y) then
-              tbgl_rotate 90, 0, 1, 0
-              tbgl_m15DrawModel me.mStraight
-            end if  
+              tbgl_m15DrawModel me.mRoad
           
           elseif Canvas_GetPixel(x, y) = %COLOR_START then
             
@@ -124,11 +108,20 @@ type tTrack
     tbgl_endList
     
     ' -- Free resources
-    gResourceManager.FreeModelId(me.mStraight)
-    gResourceManager.FreeModelId(me.mTurn)
+    gResourceManager.FreeModelId(me.mRoad)
+   ' gResourceManager.FreeModelId(me.mTurn)
     gResourceManager.FreeModelId(me.mSign)
+    gResourceManager.FreeModelId(me.mTerrain)
     
     return me.dlTrack
+  end function
+  
+  function isTerrain(worldX as single, worldZ as single)
+    Canvas_Attach(me.hBitmap, 0, 0)
+    int32 x = ((me.nWidth*8)/2 + worldX)/8
+    int32 y = ((me.nHeight*8)/2 + worldZ)/8
+    printl x, y
+    return not in(Canvas_GetPixel(x, y), %COLOR_ROAD, %COLOR_START, %COLOR_FINISH)
   end function
 
 end type
