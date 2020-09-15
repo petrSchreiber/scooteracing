@@ -17,11 +17,13 @@ end const
 
 function tbMain()
   
-     '[breakpoint] <Any note here. Breakpoint will be set to line following this statement>
   double frameRate
   
+  int32 ScreenWidth = 800
+  int32 ScreenHeight= 600
+  
   ' -- Create and show window
-  dWord hWnd = tbgl_createWindowEx("Scooteracing - press ESC to quit", 800, 600, 32, %TBGL_WS_WINDOWED | %TBGL_WS_CLOSEBOX)
+  dWord hWnd = tbgl_createWindowEx("Scooteracing - press ESC to quit", ScreenWidth, ScreenHeight, 32, %TBGL_WS_WINDOWED | %TBGL_WS_CLOSEBOX)
   tbgl_showWindow
 
   dim playerOneController, playerTwoController as tXBoxOneController
@@ -36,8 +38,6 @@ function tbMain()
     tbgl_entityTurn(%scene, %eLight, 90, 45, 0)
 
   ' -- Create something to look at
-  
-  
   dim track as tTrack
   int32 dlTrack = track.Load(app_sourcepath+"data\tracks\Curly.bmp")
   tbgl_entityCreateDLSlot(%scene, %eTrack, 0, dlTrack)
@@ -52,9 +52,11 @@ function tbMain()
   player2.ToEntity(%scene)
   
   dim osr as offScreenRenderer8b
+  dim osr2 as offScreenRenderer8b
   long width, height
   tbgl_getWindowClient(hWnd, width, height)
   osr.buildBuffer(width/4, height/4, %OSR_NEAREST_NEIGHBOUR)
+  osr2.buildBuffer(width/4, height/4, %OSR_NEAREST_NEIGHBOUR)
   
   single cx, cy, cz
   single sx, sy, sz
@@ -63,6 +65,8 @@ function tbMain()
   single speed, inclination
   single gas, steer
   
+  tbgl_backColor 64,128,255
+  
   ' -- Main loop
   while tbgl_isWindow(hWnd) 
     frameRate = tbgl_getFrameRate
@@ -70,26 +74,47 @@ function tbMain()
     osr.beginRender()
       tbgl_renderMatrix3D
       tbgl_clearFrame
-
+        
+        player1.EnforceCamera()
         tbgl_sceneRender(%scene)
 
     osr.endRender()
+    
+    osr2.beginRender()
+      tbgl_renderMatrix3D
+      tbgl_clearFrame
+        
+        player2.EnforceCamera()
+        tbgl_sceneRender(%scene)
+
+    osr2.endRender()    
       
     tbgl_renderMatrix2D(0, 0, 1, 1)
     tbgl_clearFrame
+      
       tbgl_pushColor 255,255,255
         tbgl_pushState %TBGL_TEXTURING
-          osr.bindTexture()
-        
           tbgl_pushStateProtect %TBGL_LIGHTING
-            tbgl_beginPoly %GL_QUADS
-              tbgl_texCoord2d 0, 0: tbgl_vertex 0, 0
-              tbgl_texCoord2d 1, 0: tbgl_vertex 1, 0
-              tbgl_texCoord2d 1, 1: tbgl_vertex 1, 1
-              tbgl_texCoord2d 0, 1: tbgl_vertex 0, 1
-            tbgl_endPoly
-          tbgl_popStateProtect
+          
+            osr.bindTexture()
 
+            tbgl_beginPoly %GL_QUADS
+              tbgl_texCoord2d 0, 0.0: tbgl_vertex 0, 0.5
+              tbgl_texCoord2d 1, 0.0: tbgl_vertex 1, 0.5
+              tbgl_texCoord2d 1, 0.5: tbgl_vertex 1, 1
+              tbgl_texCoord2d 0, 0.5: tbgl_vertex 0, 1
+            tbgl_endPoly
+
+            osr2.bindTexture()
+
+            tbgl_beginPoly %GL_QUADS
+              tbgl_texCoord2d 0, 0.0: tbgl_vertex 0, 0.0
+              tbgl_texCoord2d 1, 0.0: tbgl_vertex 1, 0.0
+              tbgl_texCoord2d 1, 0.5: tbgl_vertex 1, 0.5
+              tbgl_texCoord2d 0, 0.5: tbgl_vertex 0, 0.5
+            tbgl_endPoly
+            
+          tbgl_popStateProtect
         tbgl_popState
       tbgl_popColor
       

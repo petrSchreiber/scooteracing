@@ -43,6 +43,10 @@
       tbgl_entitySetTargetPos(me.scene, me.cameraEntity, 0, 1, 0)
   end function
   
+  function EnforceCamera()
+    tbgl_entitySetUse(me.scene, me.cameraEntity, True)
+  end function
+  
   function ProcessInput(controller as tXBoxOneController)
     
     me.gas = controller.GetGas()
@@ -73,8 +77,9 @@
     tbgl_entitySetRot(me.scene, me.entity, 0, 0, -me.inclination * (me.speed/me.maxSpeed) )
     
     if me.cameraEntity then
-      tbgl_entitySetRot(me.scene, me.cameraEntity, 0, 0, me.inclination/2 * (me.speed/me.maxSpeed) )
+      tbgl_entitySetRot(me.scene, me.cameraEntity, -1, 0, me.inclination/2 * (me.speed/me.maxSpeed) )
       tbgl_entitySetPos(me.scene, me.cameraEntity, 0, 2.5, -5-me.speed/10)
+      
     end if
     
     tbgl_entityPush(me.scene, me.pivotEntity, 0, 0, me.speed/frameRate)
