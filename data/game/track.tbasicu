@@ -11,6 +11,10 @@ type tTrack
   mTerrain   as int32
   
   dlTrack    as int32
+  
+  startX     as single
+  startZ     as single
+  startRot   as single
 
   function private_IsRoad(x as int32, y as int32) as int32
     return in(Canvas_GetPixel(x, y), %COLOR_ROAD, %COLOR_START, %COLOR_FINISH) > 0
@@ -45,13 +49,15 @@ type tTrack
     %COLOR_START   = rgb(255, 127, 39)
     %COLOR_FINISH  = rgb(237, 28, 36)
     int32 x, y
-    
+    single tileX, tileZ
     tbgl_newList me.dlTrack
     for x = 1 to nWidth
       for y = 1 to nHeight
         
+        tileX = x*16-(nWidth*16)/2
+        tileZ = y*16-(nHeight*16)/2
         tbgl_pushMatrix
-          tbgl_translate x*16-(nWidth*16)/2, 0, y*16-(nHeight*16)/2
+          tbgl_translate tileX, 0, tileZ
          
           if Canvas_GetPixel(x, y) = %COLOR_TERRAIN then
               tbgl_m15DrawModel me.mTerrain
@@ -82,13 +88,23 @@ type tTrack
             end if  
           
           elseif Canvas_GetPixel(x, y) = %COLOR_START then
+            
             if Canvas_GetPixel(x+1, y) = %COLOR_ROAD then
-              tbgl_rotate 90, 0, 1, 0
+              me.startRot = 90
+            elseif Canvas_GetPixel(x, y+1) = %COLOR_ROAD then
+              me.startRot = 180
             elseif Canvas_GetPixel(x-1, y) = %COLOR_ROAD then
-              tbgl_rotate 270, 0, 1, 0
+              me.startRot = 270
+            else
+              me.startRot = 0
             end if
             
+            tbgl_rotate me.startRot, 0, 1, 0
+            
             tbgl_m15DrawModel me.mSign
+            
+            me.startX = tileX
+            me.startZ = tileZ
             
           elseif Canvas_GetPixel(x, y) = %COLOR_FINISH then
             if Canvas_GetPixel(x+1, y) = %COLOR_ROAD then

@@ -49,6 +49,16 @@ function tbMain()
   player(2).Load("data/models/scooter.m15")
   player(2).ToEntity(%scene)
   
+  tbgl_entitySetPos(%scene, player(1).pivotEntity, track.startX + switch(track.startRot=0, 2, track.startRot=90,-2, track.startRot=180,-2, track.startRot=270, 2),
+                                                   0,
+                                                   track.startZ + switch(track.startRot=0, 2, track.startRot=90,-2, track.startRot=180,-2, track.startRot=270, 2))
+    tbgl_entitySetRot(%scene, player(1).pivotEntity, 0, 180-track.startRot, 0)
+    
+  tbgl_entitySetPos(%scene, player(2).pivotEntity, track.startX + switch(track.startRot=0,-2, track.startRot=90,-2, track.startRot=180, 2, track.startRot=270, 2),
+                                                   0,
+                                                   track.startZ + switch(track.startRot=0, 2, track.startRot=90, 2, track.startRot=180,-2, track.startRot=270,-2))
+    tbgl_entitySetRot(%scene, player(2).pivotEntity, 0, 180-track.startRot, 0)
+  
   dim osr(2) as offScreenRenderer8b
   long width, height
   tbgl_getWindowClient(hWnd, width, height)
