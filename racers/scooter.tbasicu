@@ -5,6 +5,7 @@
   scene        as int32
   pivotEntity  as int32
   entity       as int32
+  cameraPivot  as int32
   cameraEntity as int32
   
   gas         as Float32
@@ -36,11 +37,18 @@
     me.entity = tbgl_entityGetFreeID(me.scene)
     tbgl_entityCreateModelSlot(me.scene, me.entity, me.pivotEntity, me.modelId)
       tbgl_entitySetPos(me.scene, me.entity, 0, 0, 0)
-      
+
+    me.cameraPivot = tbgl_entityGetFreeID(me.scene)
+    tbgl_entityCreatePivot(me.scene, me.cameraPivot, me.entity)
+    
     me.cameraEntity = tbgl_entityGetFreeID(me.scene)
-    tbgl_entityCreateCamera(me.scene, me.cameraEntity, me.entity)
+    tbgl_entityCreateCamera(me.scene, me.cameraEntity, me.cameraPivot)
       tbgl_entitySetPos(me.scene, me.cameraEntity, 0, 2.5, -5)
       tbgl_entitySetTargetPos(me.scene, me.cameraEntity, 0, 1, 0)
+      
+      tbgl_entitySetRot(me.scene, me.cameraEntity, -1, 0, me.inclination/2 * (me.speed/me.maxSpeed) )
+      tbgl_entitySetPos(me.scene, me.cameraEntity, 0, 2.5, -5-me.speed/10)
+      
   end function
   
   function EnforceCamera()
@@ -92,11 +100,17 @@
     if me.cameraEntity then
       tbgl_entitySetRot(me.scene, me.cameraEntity, -1, 0, me.inclination/2 * (me.speed/me.maxSpeed) )
       tbgl_entitySetPos(me.scene, me.cameraEntity, 0, 2.5, -5-me.speed/10)
-      
     end if
     
     tbgl_entityPush(me.scene, me.pivotEntity, 0, 0, me.speed/frameRate)
     
+  end function
+  
+  function IsFinished(track as tTrack)
+    single x, y, z
+    tbgl_entityGetPos(me.scene, me.pivotEntity, x, y, z)
+    
+    return dist(track.finishX, track.finishZ, x, z) < 3
   end function
   
   function Release()
