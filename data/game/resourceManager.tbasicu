@@ -65,12 +65,12 @@ type tResourceManager
       me.errorMessage("Requesting to release display list which does not exist: #" + format$(dListId))
     end if
     
-    if me.modelId(dListId) then
+    if me.dListId(dListId) then
       tbgl_deleteList(dListId)
-      me.modelId(dListId) = False
+      me.dListId(dListId) = False
     end if
     
-    me.modelIdCount = 0
+    me.dListIdCount = 0
     for i as int32 = 1 to ubound(me.dListId)
       me.dListIdCount += iif(me.dListId(i) <> False, 1, 0)
     next

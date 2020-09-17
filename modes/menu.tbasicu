@@ -1,0 +1,211 @@
+﻿uses "file"
+
+type tMenuSession
+
+  player(2) as tScooterRacer
+  
+  scene         as long
+  entityLight   as long
+  entityCamera  as long
+  
+  racers        as String
+  racerCount    as long
+  racerNow(2)   as long
+
+  tracks        as String
+  trackCount    as long
+  trackNow      as long
+  
+  ready(2)      as long
+  
+  readyForGame  as long
+  
+  function Initialize(trackId as long, racer1id as long, racer2id as long)
+    me.ReleaseResources()
+    
+    me.scene = 1
+    tbgl_sceneCreate(me.scene)
+    
+    me.entityLight = tbgl_entityGetFreeID(me.scene)
+    tbgl_entityCreateLight(me.scene, me.entityLight, 0, %TBGL_LIGHTTYPE_DIRECTIONAL)
+      tbgl_entityTurn(me.scene, me.entityLight, 90, 45, 0)
+
+    me.entityCamera = tbgl_entityGetFreeID(me.scene)
+    tbgl_entityCreateCamera(me.scene, me.entityCamera, 0)
+      tbgl_entitySetPos(me.scene, me.entityCamera, 0, 1.5, 5)
+      tbgl_entitySetTargetPos(me.scene, me.entityCamera, 0, 1, 0)
+
+    me.ready(1) = false
+    me.ready(2) = false
+    
+    me.FetchRacers()
+    me.racerNow(1) = racer1id
+    me.racerNow(2) = racer2id
+    
+    me.FetchTracks()
+    me.trackNow = trackId
+    
+    me.player(1).Initialize()
+    me.player(1).Load(app_sourcepath+"racers\" + parse$(me.racers, ",", int(racer1id)))
+    me.player(1).ToEntity(me.scene)
+    me.player(1).SetPos(-1.5, 0.5, 0, 45)
+    
+    me.player(2).Initialize()
+    me.player(2).Load(app_sourcepath+"racers\" + parse$(me.racers, ",", int(racer2id)))
+    me.player(2).ToEntity(me.scene)
+    me.player(2).SetPos(1.5, 0.5, 0, -45)
+  end function
+  
+  function FetchRacers()
+    string racers()
+    me.racerCount = DIR_ListArray(racers, APP_SourcePath + "racers\", "*.ini")
+    me.racers = join$(racers, ",")
+    me.racerNow(1) = 1
+    me.racerNow(2) = 1
+  end function
+  
+  function FetchTracks()
+    string tracks()
+    me.trackCount = DIR_ListArray(tracks, APP_SourcePath + "data\Tracks\", "*.ini")
+    me.tracks = join$(tracks, ",")
+    me.trackNow = 1
+  end function
+  
+  function GetTrack() as string
+    return parse$(me.tracks, ",", me.trackNow)
+  end function
+
+  function GetRacer1() as string
+    return parse$(me.racers, ",", me.racerNow(1))
+  end function
+
+  function GetRacer2() as string
+    return parse$(me.racers, ",", me.racerNow(2))
+  end function
+  
+  function Render(osr() as offScreenRenderer8b, frameRate as double)
+    int32 width, height
+    osr(1).beginRender()
+      tbgl_renderMatrix3D
+      tbgl_clearFrame
+          
+        tbgl_sceneRender(me.scene)
+        
+        tbgl_entitySetRot(me.scene, me.player(1).pivotEntity, 0, timer*45, 0)
+        tbgl_entitySetRot(me.scene, me.player(2).pivotEntity, 0,-timer*45, 0)
+          
+        tbgl_rendermatrix2d
+        tbgl_pushColor 255, 255, 255
+          tbgl_pushStateProtect %TBGL_LIGHTING
+            tbgl_setActiveFont 3
+            tbgl_printfont "ScooteRacer", 10, 120
+        
+            tbgl_setActiveFont 2
+            
+            string racer1 = "(X) "+extract$(me.GetRacer1(), ".")
+            tbgl_getFontTextSize(racer1, width, height)
+            tbgl_printfont racer1, (osr(1).imageBuffer.width*0.25)-width/2, 40
+            
+            string racer2 = "(X) "+extract$(me.GetRacer2(), ".") 
+            tbgl_getFontTextSize(racer2, width, height)
+            tbgl_printfont racer2, (osr(1).imageBuffer.width*0.75)-width/2, 40
+
+            string track = "(Y) "+extract$(me.GetTrack(), ".") 
+            tbgl_getFontTextSize(track, width, height)
+            tbgl_printfont track, (osr(1).imageBuffer.width*0.5)-width/2, 25
+
+            string ready1 = "(A) "+iif$(me.ready(1), "READY!", "READY?")
+            tbgl_getFontTextSize(ready1, width, height)
+            
+            tbgl_pushcolor iif(me.ready(1), 0, 192), iif(me.ready(1), 255, 192), iif(me.ready(1), 0, 192)
+              tbgl_printfont ready1, (osr(1).imageBuffer.width*0.25)-width/2, 10
+            tbgl_popColor
+            
+            string ready2 = "(A) "+iif$(me.ready(2), "READY!", "READY?")
+            tbgl_getFontTextSize(ready2, width, height)
+            
+            tbgl_pushcolor iif(me.ready(2), 0, 192), iif(me.ready(2), 255, 192), iif(me.ready(2), 0, 192)
+              tbgl_printfont ready2, (osr(1).imageBuffer.width*0.75)-width/2, 10
+            tbgl_popColor
+
+
+          tbgl_popStateProtect
+        tbgl_popColor
+          
+    osr(1).endRender()
+      
+    ' -- Render view
+    tbgl_renderMatrix2D(0, 0, 1, 1)
+    tbgl_clearFrame
+      
+      tbgl_pushColor 255,255,255
+        tbgl_pushState %TBGL_TEXTURING
+          tbgl_pushStateProtect %TBGL_LIGHTING
+
+            osr(1).bindTexture()
+            
+            tbgl_beginPoly %GL_QUADS
+              tbgl_texCoord2d 0, 0: tbgl_vertex 0, 0
+              tbgl_texCoord2d 1, 0: tbgl_vertex 1, 0
+              tbgl_texCoord2d 1, 1: tbgl_vertex 1, 1
+              tbgl_texCoord2d 0, 1: tbgl_vertex 0, 1
+            tbgl_endPoly
+            
+          tbgl_popStateProtect
+        tbgl_popState
+        
+      tbgl_popColor
+      
+    tbgl_drawFrame
+    
+  end function
+  
+  function ProcessInput(playerController() as tXBoxOneController, frameRate as double)
+    int32 i
+    int32 changed = false
+    static px(2)
+    static py(2)
+    
+    for i = 1 to 2
+      if playerController(i).GetX() then
+        if px(i) = 0 then
+          me.racerNow(i) = cycle_next(me.racerNow(i), 1, me.racerCount, 1)
+          px(i) = 1
+          changed = true
+        end if  
+      else
+        px(i) = 0
+      end if
+      
+      if playerController(i).GetY() then
+        if py(i) = 0 then
+          me.trackNow = cycle_next(me.trackNow, 1, me.trackCount, 1)
+          py(i) = 1
+          changed = true
+        end if
+      else
+        py(i) = 0
+      end if
+      
+      if playerController(i).GetA() then
+        me.ready(i) = true
+      else
+        me.ready(i) = false
+      end if
+    next
+    
+    if changed then
+      me.Initialize(me.trackNow, me.racerNow(1), me.racerNow(2))
+    end if
+    
+  end function
+  
+  function ReleaseResources()
+    tbgl_sceneDestroy(me.scene)
+
+    me.player(1).ReleaseResources()
+    me.player(2).ReleaseResources()
+  end function
+
+end type
+

@@ -27,4 +27,25 @@ type tXboxOneController
   function ResetVoted()
     return TBDI_JoyButton(me.controllerId, 5) = 128 and TBDI_JoyButton(me.controllerId, 6) = 128
   end function
+  
+  function EndVoted()
+    return TBDI_JoyButton(me.controllerId, 8) = 128
+  end function
+  
+  function GetA()
+    return TBDI_JoyButton(me.controllerId, 1) = 128
+  end function
+
+  function GetB()
+    return TBDI_JoyButton(me.controllerId, 2) = 128
+  end function
+  
+  function GetX()
+    return TBDI_JoyButton(me.controllerId, 3) = 128
+  end function
+
+  function GetY()
+    return TBDI_JoyButton(me.controllerId, 4) = 128
+  end function
+  
 end type

@@ -1,0 +1,276 @@
+﻿type tPlayerMetadata
+
+  startTime    as single
+  endTime      as single
+  didRecord    as int32
+  
+  function Initialize()
+    me.startTime = 0
+    me.endTime = 0
+    me.didRecord = 0
+  end function
+  
+  function GetTime() as string
+    if me.endTime then
+      return remain$(dt_secToTime(me.endTime - me.startTime), ":")
+    else
+      return remain$(dt_secToTime(timer - me.startTime), ":")
+    end if
+  end function
+end type
+
+type tGameSession
+
+  countdown as single
+  
+  playerData(2) as tPlayerMetadata
+  
+  track as tTrack
+  player(2) as tScooterRacer
+  
+  scene as long
+  entityLight as long
+  entityTrack as long
+  
+  originalTrackFile as string
+  originalPlayer1File       as string
+  originalPlayer2File       as string
+  
+  ready(2) as int32
+  
+  function Initialize(trackFile as string, player1File as string, player2File as string)
+    me.ReleaseResources()
+    
+    me.originalTrackFile = trackFile
+    me.originalPlayer1File = player1File
+    me.originalPlayer2File = player2File
+    
+    me.scene = 1
+    tbgl_sceneCreate(me.scene)
+    
+    me.entityLight = tbgl_entityGetFreeID(me.scene)
+    tbgl_entityCreateLight(me.scene, me.entityLight, 0, %TBGL_LIGHTTYPE_DIRECTIONAL)
+      tbgl_entityTurn(me.scene, me.entityLight, 90, 45, 0)
+    
+    me.countdown = 4.9
+    
+    me.playerData(1).Initialize()
+    me.playerData(2).Initialize()
+
+    me.entityTrack = tbgl_entityGetFreeID(me.scene)
+    int32 dlTrack = me.track.Load(app_sourcepath+"data\tracks\" + trackFile)
+    tbgl_entityDestroy(me.scene, me.entityTrack)
+    tbgl_entityCreateDLSlot(me.scene, me.entityTrack, 0, dlTrack)
+    
+    me.player(1).Initialize()
+    me.player(2).Initialize()
+    
+    me.player(1).Load(app_sourcepath+"racers\" + player1File)
+    me.player(1).ToEntity(me.scene)
+    
+    me.player(2).Load(app_sourcepath+"racers\" + player2File)
+    me.player(2).ToEntity(me.scene)
+
+    single x, y, z, r
+    me.track.GetStartPos(1, x, y, z, r)
+    me.player(1).SetPos(x, y, z, r)
+    
+
+    me.track.GetStartPos(2, x, y, z, r)
+    me.player(2).SetPos(x, y, z, r)
+    
+    me.ready(1) = false
+    me.ready(2) = false
+  end function
+  
+  function Render(osr() as offScreenRenderer8b, frameRate as double)
+    int32 i
+    
+    ' -- Render each view to texture
+    for i = 1 to 2
+      osr(i).beginRender()
+        tbgl_renderMatrix3D
+        tbgl_clearFrame
+          
+          me.player(i).EnforceCamera()
+          tbgl_sceneRender(me.scene)
+          
+          Game_RenderOverlay2D(me, i, frameRate)
+          
+      osr(i).endRender()
+    next
+      
+    ' -- Render both views to screen
+    Game_RenderSplitscreen(osr)
+    
+  end function
+  
+  function ProcessInput(playerController() as tXBoxOneController)
+    int32 i
+    
+    if playerController(1).ResetVoted() and playerController(2).ResetVoted() then 
+      me.Initialize(me.originalTrackFile, me.originalPlayer1File, me.originalPlayer2File)
+      exit function
+    end if
+
+    for i = 1 to 2
+      if playerController(i).GetB() then
+        me.ready(i) = true
+      else
+        me.ready(i) = false
+      end if
+    next
+    
+    
+    ' -- Control the player
+    for i = 1 to 2
+      if not me.player(i).IsFinished(me.track) then
+        me.player(i).ProcessInput(playerController(i))
+      end if
+    next
+  end function
+  
+  function HandleCollisions(frameRate as double)
+    single p1x, p1y, p1z
+    single p2x, p2y, p2z
+    me.player(1).GetPos(p1x, p1y, p1z)
+    me.player(2).GetPos(p2x, p2y, p2z)
+    
+    single distance
+    distance = dist(p1x, p1z, p2x, p2z)
+    
+    if distance < 1.5 then
+      p1x += ((p1x-p2x)*2)/framerate
+      p1z += ((p1z-p2z)*2)/framerate
+      
+      p2x -= ((p1x-p2x)*2)/framerate
+      p2z -= ((p1z-p2z)*2)/framerate
+      
+      me.player(1).SetPos(p1x, p1y, p1z)
+      me.player(2).SetPos(p2x, p2y, p2z)
+    end if
+  end function
+  
+  function EvaluateRaceFinish(frameRate as double)
+    int32 raceIsOn = int(me.countdown) < 1
+    int32 i
+    
+    if raceIsOn then
+      for i = 1 to 2
+        if not me.player(i).IsFinished(me.track) then
+          me.player(i).ApplyInput(frameRate, me.track)
+          
+        else
+          ' -- Did we just end the race for given player?
+          if me.playerData(i).endTime = 0 then
+            ' -- Adjust camera
+            tbgl_entityPush(me.scene, me.player(i).cameraEntity, 0, -1, 5)
+            me.playerData(i).endTime = timer
+            
+            ' -- Verify possible record
+            if DT_TimeToSec("00:"+me.playerData(i).getTime()) < DT_TimeToSec("00:"+me.track.record) then
+              me.track.SetRecord(me.playerData(i).getTime())
+              me.playerData(i).didRecord = true
+            end if
+          end if
+          
+          ' -- Animate finishing camera
+          tbgl_entityTurn(me.scene, me.player(i).cameraPivot, 0, 22.5/FrameRate, 0)
+
+        end if
+      next
+    end if
+    
+  end function
+  
+  function ReleaseResources()
+    tbgl_sceneDestroy(me.scene)
+    
+    me.track.ReleaseResources()
+    me.player(1).ReleaseResources()
+    me.player(2).ReleaseResources()
+  end function
+
+end type
+
+function Game_RenderOverlay2D(game as tGameSession, playerId as int32, frameRate as double)
+  string countdownText
+  int32 i = playerId
+  
+  tbgl_rendermatrix2d
+  tbgl_pushColor 255, 255, 255
+    tbgl_pushStateProtect %TBGL_LIGHTING
+      if game.countdown > -1 then
+        game.countdown -= 0.5/frameRate
+        
+        tbgl_setActiveFont 1
+        
+        if int(game.countdown) > 0 then
+          countdownText = int(game.countdown)
+          tbgl_printfont countdownText, 90, 40
+        else
+          countdownText = "GO!"
+          if game.playerData(i).startTime = 0 then
+            game.playerData(i).startTime = timer
+          end if
+          
+          tbgl_printfont countdownText, 70, 40
+        end if
+      else
+        tbgl_setActiveFont 2
+        tbgl_printfont game.playerData(i).getTime(), 2.5, 62.5
+        
+        if DT_TimeToSec("00:"+game.playerData(i).getTime()) < DT_TimeToSec("00:"+game.track.record) then
+          tbgl_pushColor 255,255,0
+            tbgl_printfont game.track.record, 2.5, 52.5
+          tbgl_popColor
+        end if
+        
+        if game.playerData(i).didRecord then
+          tbgl_setActiveFont 1
+          tbgl_pushColor 255, 255, 200+sin(gettickcount/100)*55
+            tbgl_printfont "RECORD", 40, 47
+          tbgl_popColor
+        end if
+        
+        if game.ready(i) then
+          tbgl_setActiveFont 2
+          tbgl_pushColor 255, 0, 0
+            tbgl_printfont "(B) Voting to go back to menu", 2.5, 5
+          tbgl_popColor
+          
+        end if
+      end If
+      tbgl_popStateProtect
+    tbgl_popColor
+end function
+
+function Game_RenderSplitscreen(osr() as offScreenRenderer8b)
+  single screenOffset
+  int32 i
+  tbgl_renderMatrix2D(0, 0, 1, 1)
+  tbgl_clearFrame
+    
+    tbgl_pushColor 255,255,255
+      tbgl_pushState %TBGL_TEXTURING
+        tbgl_pushStateProtect %TBGL_LIGHTING
+          
+          for i = 1 to 2
+            osr(i).bindTexture()
+            
+            screenOffset = - (i-1)*0.5
+            tbgl_beginPoly %GL_QUADS
+              tbgl_texCoord2d 0, 0.0: tbgl_vertex 0, 0.5 + screenOffset
+              tbgl_texCoord2d 1, 0.0: tbgl_vertex 1, 0.5 + screenOffset
+              tbgl_texCoord2d 1, 0.5: tbgl_vertex 1, 1.0 + screenOffset
+              tbgl_texCoord2d 0, 0.5: tbgl_vertex 0, 1.0 + screenOffset
+            tbgl_endPoly
+          next
+          
+        tbgl_popStateProtect
+      tbgl_popState
+      
+    tbgl_popColor
+    
+ tbgl_drawFrame
+end function

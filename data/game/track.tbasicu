@@ -3,6 +3,12 @@ uses "console"
 
 #include once "resourceManager.tbasicu"
 
+%COLOR_TERRAIN = rgb(34, 177, 76)
+%COLOR_TERRAIN_TREE = rgb(181, 230, 29)
+%COLOR_ROAD    = rgb(195, 195, 195)
+%COLOR_START   = rgb(255, 127, 39)
+%COLOR_FINISH  = rgb(237, 28, 36)
+
 type tTrack
 
   mRoad  as int32
@@ -58,11 +64,6 @@ type tTrack
     me.hBitmap = Canvas_BitmapLoad(trackBitmap, me.nWidth, me.nHeight)
     Canvas_Attach(me.hBitmap, 0, 0)
     
-    %COLOR_TERRAIN = rgb(34, 177, 76)
-    %COLOR_TERRAIN_TREE = rgb(181, 230, 29)
-    %COLOR_ROAD    = rgb(195, 195, 195)
-    %COLOR_START   = rgb(255, 127, 39)
-    %COLOR_FINISH  = rgb(237, 28, 36)
     int32 x, y
     single tileX, tileZ
     tbgl_newList me.dlTrack
@@ -125,6 +126,20 @@ type tTrack
     tbgl_endList
     
     return me.dlTrack
+  end function
+  
+  function GetStartPos(playerNumber as int32, byref x as single, byref y as single, byref z as single, byref rotY as single)
+    if playerNumber = 1 then
+      x = me.startX + switch(me.startRot=0, 2, me.startRot=90,-2, me.startRot=180,-2, me.startRot=270, 2)
+      y = 0
+      z = me.startZ + switch(me.startRot=0, 2, me.startRot=90,-2, me.startRot=180,-2, me.startRot=270, 2)
+      rotY = 180-me.startRot
+    else
+      x = me.startX + switch(me.startRot=0,-2, me.startRot=90,-2, me.startRot=180, 2, me.startRot=270, 2)
+      y = 0
+      z = me.startZ + switch(me.startRot=0, 2, me.startRot=90, 2, me.startRot=180,-2, me.startRot=270,-2)
+      rotY = 180-me.startRot
+    end if
   end function
   
   function isTerrain(worldX as single, worldZ as single)

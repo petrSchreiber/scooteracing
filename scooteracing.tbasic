@@ -6,51 +6,8 @@
 #include once "data/game/track.tbasicu"
 #include once "racers/scooter.tbasicu"
 
-begin const
-  ' -- Scene IDs
-  %scene  = 1
- 
-  ' -- Entity IDs 
-  %eLight
-  %eTrack
-end const
-
-
-
-type tPlayerMetadata
-
-  startTime    as single
-  endTime      as single
-  didRecord    as int32
-  
-  function Initialize()
-    me.startTime = 0
-    me.endTime = 0
-    me.didRecord = 0
-  end function
-  
-  function GetTime() as string
-    if me.endTime then
-      return remain$(dt_secToTime(me.endTime - me.startTime), ":")
-    else
-      return remain$(dt_secToTime(timer - me.startTime), ":")
-    end if
-  end function
-end type
-
-type tGameSession
-
-  countdown as single
-  
-  playerData(2) as tPlayerMetadata
-  
-  function Initialize()
-    me.countdown = 4.9
-    me.playerData(1).Initialize()
-    me.playerData(2).Initialize()
-  end function
-
-end type
+#include once "modes/game.tbasicu"
+#include once "modes/menu.tbasicu"
 
 function tbMain()
   
@@ -63,205 +20,79 @@ function tbMain()
   dWord hWnd = tbgl_createWindowEx("Scooteracing - press ESC to quit", ScreenWidth, ScreenHeight, 32, %TBGL_WS_WINDOWED | %TBGL_WS_CLOSEBOX)
   tbgl_showWindow
 
+  ' -- Controllers
   dim playerController(2) as tXBoxOneController
   playerController(1).Initialize(hWnd, 1)
   playerController(2).Initialize(hWnd, 2)
-
-  dim game as tGameSession
-  game.Initialize()
-
-  ' -- Create scene
-  tbgl_sceneCreate(%scene)
-
-  ' -- Create point light  
-  tbgl_entityCreateLight(%scene, %eLight, 0, %TBGL_LIGHTTYPE_DIRECTIONAL)
-    tbgl_entityTurn(%scene, %eLight, 90, 45, 0)
-
-  ' -- Create something to look at
-  dim track as tTrack
-  int32 dlTrack = track.Load(app_sourcepath+"data\tracks\Curly.ini")
-  tbgl_entityCreateDLSlot(%scene, %eTrack, 0, dlTrack)
-
-  dim player(2) as tScooterRacer
-  player(1).Load(app_sourcepath+"racers\naranjino.ini")
-  player(1).ToEntity(%scene)
   
-  player(2).Load(app_sourcepath+"racers\medlina.ini")
-  player(2).ToEntity(%scene)
-  
-  tbgl_entitySetPos(%scene, player(1).pivotEntity, track.startX + switch(track.startRot=0, 2, track.startRot=90,-2, track.startRot=180,-2, track.startRot=270, 2),
-                                                   0,
-                                                   track.startZ + switch(track.startRot=0, 2, track.startRot=90,-2, track.startRot=180,-2, track.startRot=270, 2))
-    tbgl_entitySetRot(%scene, player(1).pivotEntity, 0, 180-track.startRot, 0)
-    
-  tbgl_entitySetPos(%scene, player(2).pivotEntity, track.startX + switch(track.startRot=0,-2, track.startRot=90,-2, track.startRot=180, 2, track.startRot=270, 2),
-                                                   0,
-                                                   track.startZ + switch(track.startRot=0, 2, track.startRot=90, 2, track.startRot=180,-2, track.startRot=270,-2))
-    tbgl_entitySetRot(%scene, player(2).pivotEntity, 0, 180-track.startRot, 0)
-  
+  ' -- Rendering
   dim osr(2) as offScreenRenderer8b
   long width, height
   tbgl_getWindowClient(hWnd, width, height)
   osr(1).buildBuffer(width/4, height/4, %OSR_NEAREST_NEIGHBOUR)
   osr(2).buildBuffer(width/4, height/4, %OSR_NEAREST_NEIGHBOUR)
-  
-  single p1x, p1y, p1z
-  single p2x, p2y, p2z
-  single distance
-  single screenOffset
-  
   tbgl_backColor 64, 128, 255
   
-
+  ' -- Fonts
   TBGL_BuildFont(TBGL_FontHandle("Arial Black", 24), 1)
   TBGL_BuildFont(TBGL_FontHandle("Arial Black", 8), 2)
+  TBGL_BuildFont(TBGL_FontHandle("Arial Black", 18, %TBGL_BOLD | %TBGL_ITALICS), 3)
 
-  int32 i
+  ' -- Game
+  dim game as tGameSession
+  dim mainMenu as tMenuSession
   
-  string countdownText
+  %MODE_MENU = 1
+  %MODE_GAME = 2
+  dim mode = %MODE_MENU
+
+  select case mode
+    case %MODE_MENU
+      mainMenu.Initialize(1, 1, 1)
+      
+    case %MODE_GAME
+      game.Initialize("Curly.ini", "naranjino.ini", "medlina.ini")
+
+  end select
   
-  ' -- Main loop
-  while tbgl_isWindow(hWnd) 
+  while tbgl_isWindow(hWnd)
   
     frameRate = tbgl_getFrameRate
-    tbgl_setWindowTitle(hWnd, format$(frameRate, "#.00"))
-    
-    for i = 1 to 2
-      osr(i).beginRender()
-        tbgl_renderMatrix3D
-        tbgl_clearFrame
-          
-          player(i).EnforceCamera()
-          tbgl_sceneRender(%scene)
-          
-            tbgl_rendermatrix2d
-            tbgl_pushColor 255, 255, 255
-              tbgl_pushStateProtect %TBGL_LIGHTING
-                if game.countdown > -1 then
-                  game.countdown -= 0.5/frameRate
-                  
-                  tbgl_setActiveFont 1
-                  
-                  if int(game.countdown) > 0 then
-                    countdownText = int(game.countdown)
-                    tbgl_printfont countdownText, 90, 40
-                  else
-                    countdownText = "GO!"
-                    if game.playerData(i).startTime = 0 then
-                      game.playerData(i).startTime = timer
-                    end if
-                    
-                    tbgl_printfont countdownText, 70, 40
-                  end if
-                else
-                  tbgl_setActiveFont 2
-                  tbgl_printfont game.playerData(i).getTime(), 2.5, 62.5
-                  
-                  if DT_TimeToSec("00:"+game.playerData(i).getTime()) < DT_TimeToSec("00:"+track.record) then
-                    tbgl_pushColor 255,255,0
-                      tbgl_printfont track.record, 2.5, 52.5
-                    tbgl_popColor
-                  end if
-                  
-                  if game.playerData(i).didRecord then
-                    tbgl_setActiveFont 1
-                    tbgl_pushColor 255, 255, 200+sin(gettickcount/100)*55
-                      tbgl_printfont "RECORD", 40, 47
-                    tbgl_popColor
-                  end if
-                end If
-                tbgl_popStateProtect
-            tbgl_popColor
-          
-      osr(i).endRender()
-    next
-      
-    tbgl_renderMatrix2D(0, 0, 1, 1)
-    tbgl_clearFrame
-      
-      tbgl_pushColor 255,255,255
-        tbgl_pushState %TBGL_TEXTURING
-          tbgl_pushStateProtect %TBGL_LIGHTING
-            
-            for i = 1 to 2
-              osr(i).bindTexture()
-              
-              screenOffset = - (i-1)*0.5
-              tbgl_beginPoly %GL_QUADS
-                tbgl_texCoord2d 0, 0.0: tbgl_vertex 0, 0.5 + screenOffset
-                tbgl_texCoord2d 1, 0.0: tbgl_vertex 1, 0.5 + screenOffset
-                tbgl_texCoord2d 1, 0.5: tbgl_vertex 1, 1.0 + screenOffset
-                tbgl_texCoord2d 0, 0.5: tbgl_vertex 0, 1.0 + screenOffset
-              tbgl_endPoly
-            next
-            
-          tbgl_popStateProtect
-        tbgl_popState
-        
-      tbgl_popColor
-      
-   tbgl_drawFrame
+    if rndf(0,1) > 0.85 then tbgl_setWindowTitle(hWnd, format$(frameRate, "#.00"))
 
-    ' -- ESCAPE key to exit application
-    if tbgl_getWindowKeyState(hWnd, %VK_ESCAPE) then exit while
-    if playerController(1).ResetVoted() and playerController(2).ResetVoted() then 
-      'dim game as tGameSession
-      game.Initialize()
-      tbgl_entitySetPos(%scene, player(1).pivotEntity, track.startX + switch(track.startRot=0, 2, track.startRot=90,-2, track.startRot=180,-2, track.startRot=270, 2),
-                                                       0,
-                                                       track.startZ + switch(track.startRot=0, 2, track.startRot=90,-2, track.startRot=180,-2, track.startRot=270, 2))
-        tbgl_entitySetRot(%scene, player(1).pivotEntity, 0, 180-track.startRot, 0)
+    select case mode
+      case %MODE_MENU
+        mainMenu.Render(osr, frameRate)
+        mainMenu.ProcessInput(playerController, frameRate)
         
-      tbgl_entitySetPos(%scene, player(2).pivotEntity, track.startX + switch(track.startRot=0,-2, track.startRot=90,-2, track.startRot=180, 2, track.startRot=270, 2),
-                                                       0,
-                                                       track.startZ + switch(track.startRot=0, 2, track.startRot=90, 2, track.startRot=180,-2, track.startRot=270,-2))
-        tbgl_entitySetRot(%scene, player(2).pivotEntity, 0, 180-track.startRot, 0)
-       
-      player(1).Initialize()
-      player(2).Initialize()
-      
-    end if
-    
-    if int(game.countdown) < 1 then
-      for i = 1 to 2
-        if not player(i).IsFinished(track) then
-          player(i).ProcessInput(playerController(i))
-          player(i).ApplyInput(frameRate, track)
-          
-        else
-          tbgl_entityTurn(%scene, player(i).cameraPivot, 0, 22.5/FrameRate, 0)
-          if game.playerData(i).endTime = 0 then
-            tbgl_entityPush(%scene, player(i).cameraEntity, 0, -1, 4)
-            game.playerData(i).endTime = timer
-          end if
-          
-          if DT_TimeToSec("00:"+game.playerData(i).getTime()) < DT_TimeToSec("00:"+track.record) then
-            track.SetRecord(game.playerData(i).getTime())
-            game.playerData(i).didRecord = true
-          end if
-          
+        if mainMenu.ready(1) = true and mainMenu.ready(2) = true then
+          mainMenu.ReleaseResources()
+          game.Initialize(mainMenu.GetTrack(), mainMenu.GetRacer1(), mainMenu.GetRacer2())
+          mode = %MODE_GAME
         end if
-      next
-    end if
-    
-    tbgl_entityGetPos(%scene, player(1).pivotEntity, p1x, p1y, p1z)
-    tbgl_entityGetPos(%scene, player(2).pivotEntity, p2x, p2y, p2z)
-    
-    distance = dist(p1x, p1z, p2x, p2z)
-    
-    if distance < 1.5 then
-      p1x += ((p1x-p2x)*2)/framerate
-      p1z += ((p1z-p2z)*2)/framerate
-      
-      p2x -= ((p1x-p2x)*2)/framerate
-      p2z -= ((p1z-p2z)*2)/framerate
-      
-      tbgl_entitysetPos(%scene, player(1).pivotEntity, p1x, p1y, p1z)
-      tbgl_entitysetPos(%scene, player(2).pivotEntity, p2x, p2y, p2z)
-      
-    end if
+        
+      case %MODE_GAME
+        game.ProcessInput(playerController)
 
+        game.HandleCollisions(frameRate)
+        
+        game.EvaluateRaceFinish(frameRate)
+        
+        game.Render(osr, frameRate)
+        
+        if game.ready(1) = true and game.ready(2) = true then
+          game.ReleaseResources()
+          mainMenu.Initialize(mainMenu.trackNow, mainMenu.racerNow(1), mainMenu.racerNow(2))
+          mode = %MODE_MENU
+        end if
+        
+    end select
+      
+    if tbgl_getWindowKeyState(hWnd, %VK_ESCAPE) then exit while
+    
   wend
 
   tbgl_destroyWindow
 end function
+
+

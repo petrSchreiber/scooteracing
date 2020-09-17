@@ -1,5 +1,5 @@
 ﻿uses "ini"
-
+%SCOOTER_BODY_LAYER = 8
 type tScooterRacer
 
   configFile as string
@@ -35,7 +35,7 @@ type tScooterRacer
     tbgl_m15LoadModel modelFile, "", me.modelId, 0, %TBGL_NORMAL_PRECISE
     
     int32 i
-    %SCOOTER_BODY_LAYER = 8
+    
     string rgbColor = ini_getkey(configFile, "Geometry", "bodyColor")
     byte r = parse$(rgbColor, ",", 1)
     byte g = parse$(rgbColor, ",", 2)
@@ -67,6 +67,12 @@ type tScooterRacer
   
   function ToEntity(scene as int32) as int32
     me.scene = scene
+    
+    if me.pivotEntity then tbgl_entityDestroy(me.scene, me.pivotEntity)
+    if me.entity then tbgl_entityDestroy(me.scene, me.entity)
+    if me.cameraPivot then tbgl_entityDestroy(me.scene, me.cameraPivot)
+    if me.cameraEntity then tbgl_entityDestroy(me.scene, me.cameraEntity)
+    
     me.pivotEntity = tbgl_entityGetFreeID(me.scene)
     tbgl_entityCreatePivot(me.scene, me.pivotEntity, 0)
   
@@ -144,9 +150,19 @@ type tScooterRacer
     if me.cameraEntity then
       tbgl_entitySetRot(me.scene, me.cameraEntity, -1, 0, me.inclination/2 * (me.speed/me.maxSpeed) )
       tbgl_entitySetPos(me.scene, me.cameraEntity, 0, 2.5, -5-me.speed/10)
+      tbgl_entityTurn(me.scene, me.cameraPivot, 0, 0, 0)
     end if
   end function
   
+  function SetPos(x as single, y as single, z as single, optional rotY as single = 0)
+    tbgl_entitySetPos(me.scene, me.pivotEntity, x, y, z)
+    if function_cparams = 4 then tbgl_entitySetRot(me.scene, me.pivotEntity, 0, rotY, 0)
+  end function
+
+  function GetPos(byref x as single, byref y as single, byref z as single)
+    tbgl_entityGetPos(me.scene, me.pivotEntity, x, y, z)
+  end function
+
   function IsFinished(track as tTrack)
     single x, y, z
     tbgl_entityGetPos(me.scene, me.pivotEntity, x, y, z)
