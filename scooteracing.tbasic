@@ -17,7 +17,7 @@ function tbMain()
   int32 ScreenHeight= 600
   
   ' -- Create and show window
-  dWord hWnd = tbgl_createWindowEx("Scooteracing - press ESC to quit", ScreenWidth, ScreenHeight, 32, %TBGL_WS_WINDOWED | %TBGL_WS_CLOSEBOX)
+  dWord hWnd = tbgl_createWindowEx("Scooteracing - press ESC to quit", ScreenWidth, ScreenHeight, 32,  %TBGL_WS_WINDOWED | %TBGL_WS_CLOSEBOX)
   tbgl_showWindow
 
   ' -- Controllers

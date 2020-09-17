@@ -37,6 +37,7 @@ type tGameSession
   originalPlayer2File       as string
   
   ready(2) as int32
+  restart(2) as int32
   
   function Initialize(trackFile as string, player1File as string, player2File as string)
     me.ReleaseResources()
@@ -81,6 +82,10 @@ type tGameSession
     
     me.ready(1) = false
     me.ready(2) = false
+    
+    me.restart(1) = false
+    me.restart(2) = false
+    
   end function
   
   function Render(osr() as offScreenRenderer8b, frameRate as double)
@@ -108,19 +113,24 @@ type tGameSession
   function ProcessInput(playerController() as tXBoxOneController)
     int32 i
     
-    if playerController(1).ResetVoted() and playerController(2).ResetVoted() then 
-      me.Initialize(me.originalTrackFile, me.originalPlayer1File, me.originalPlayer2File)
-      exit function
-    end if
-
     for i = 1 to 2
       if playerController(i).GetB() then
         me.ready(i) = true
       else
         me.ready(i) = false
       end if
+      
+      if playerController(i).GetY() then
+        me.restart(i) = true
+      else
+        me.restart(i) = false
+      end if
     next
     
+    if me.restart(1) and me.restart(2) then 
+      me.Initialize(me.originalTrackFile, me.originalPlayer1File, me.originalPlayer2File)
+      exit function
+    end if
     
     ' -- Control the player
     for i = 1 to 2
@@ -233,14 +243,26 @@ function Game_RenderOverlay2D(game as tGameSession, playerId as int32, frameRate
           tbgl_popColor
         end if
         
-        if game.ready(i) then
+        if game.player(1).IsFinished(game.track) and game.player(2).IsFinished(game.track) then
           tbgl_setActiveFont 2
           tbgl_pushColor 255, 0, 0
-            tbgl_printfont "(B) Voting to go back to menu", 2.5, 5
+            tbgl_printfont "Use (Y) or (B) to vote", 2.5, 5
           tbgl_popColor
-          
         end if
       end If
+      
+      if game.restart(i) then
+        tbgl_setActiveFont 2
+        tbgl_pushColor 255, 0, 0
+          tbgl_printfont "(Y) Voting to RESTART", 2.5, 5
+        tbgl_popColor
+      elseif game.ready(i) then
+        tbgl_setActiveFont 2
+        tbgl_pushColor 255, 0, 0
+          tbgl_printfont "(B) Voting to go back to MENU", 2.5, 5
+        tbgl_popColor
+      end if
+      
       tbgl_popStateProtect
     tbgl_popColor
 end function
