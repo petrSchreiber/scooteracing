@@ -1,4 +1,6 @@
-﻿type tScooterRacer
+﻿uses "ini"
+
+type tScooterRacer
 
   modelId as int32
   
@@ -18,15 +20,35 @@
   maxSpeed        as float32
   maxSteer        as float32
   maxWind         as float32
+  maxAcceleration as float32
 
-  function Load(modelFile as string)
+  function Load(configFile as string)
+  
+    me.ReleaseResources()
+  
+    printl configFile
+    string modelFile = app_sourcepath + "data\models\" + ini_getkey(configFile, "Geometry", "model")
+    printl modelFile
     me.modelId = gResourceManager.getModelId()
     tbgl_m15LoadModel modelFile, "", me.modelId, 0, %TBGL_NORMAL_PRECISE
     
-    me.maxInclination = 25
-    me.maxSpeed       = 27
-    me.maxSteer       = 135
-    me.maxWind        = 15
+    int32 i
+    %SCOOTER_BODY_LAYER = 8
+    string rgbColor = ini_getkey(configFile, "Geometry", "bodyColor")
+    byte r = parse$(rgbColor, ",", 1)
+    byte g = parse$(rgbColor, ",", 2)
+    byte b = parse$(rgbColor, ",", 3)
+    for i = 1 to tbgl_m15GetModelVertexcount(me.modelId)
+      if tbgl_m15GetVertexLayer(me.modelId, i) = %SCOOTER_BODY_LAYER then
+        tbgl_m15SetVertexRGB(me.modelId, i, r, g, b)
+      end if
+    next
+    
+    me.maxInclination = ini_getkey(configFile, "Params", "maxInclination")
+    me.maxSpeed       = ini_getkey(configFile, "Params", "maxSpeed")
+    me.maxSteer       = ini_getkey(configFile, "Params", "maxSteer")
+    me.maxWind        = ini_getkey(configFile, "Params", "maxWind")
+    me.maxAcceleration= ini_getkey(configFile, "Params", "maxAcceleration")
   end function
   
   function ToEntity(scene as int32) as int32
@@ -71,17 +93,18 @@
     
     if me.gas = 0 then
       me.speed -= me.maxWind/frameRate
-    else
-      if not track.isTerrain(x, z) then
-        me.speed += (me.gas*10)/frameRate
+    elseif not track.isTerrain(x, z) then
+        me.speed += (me.gas*me.maxAcceleration)/frameRate
+    end if
+    
+    if track.isTerrain(x, z) then
+      if me.speed > 1 then
+        me.speed -= me.maxWind*4/frameRate
       else
-        if me.speed > 2 then
-          me.speed -= me.maxWind*4/frameRate
-        else
-          me.speed += (me.gas*1)/frameRate
-        end if
+        me.speed += (me.gas*1)/frameRate
       end if
     end if
+    
     if me.speed > me.maxSpeed then me.speed = me.maxSpeed
     if me.speed < 0 then me.speed = 0
     
@@ -110,10 +133,10 @@
     single x, y, z
     tbgl_entityGetPos(me.scene, me.pivotEntity, x, y, z)
     
-    return dist(track.finishX, track.finishZ, x, z) < 3
+    return dist(track.finishX, track.finishZ, x, z) < 4
   end function
   
-  function Release()
+  function ReleaseResources()
     if me.modelId then
       gResourceManager.freeModelId(me.modelId)
       me.modelId = 0

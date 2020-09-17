@@ -18,14 +18,15 @@ end const
 uses "dt"
 
 type tPlayerMetadata
+
   startTime    as single
   endTime      as single
-  
+  didRecord    as int32
   function GetTime() as string
     if me.endTime then
-      return dt_secToTime(me.endTime - me.startTime)
+      return remain$(dt_secToTime(me.endTime - me.startTime), ":")
     else
-      return dt_secToTime(timer - me.startTime)
+      return remain$(dt_secToTime(timer - me.startTime), ":")
     end if
   end function
 end type
@@ -56,14 +57,14 @@ function tbMain()
 
   ' -- Create something to look at
   dim track as tTrack
-  int32 dlTrack = track.Load(app_sourcepath+"data\tracks\Curly.bmp")
+  int32 dlTrack = track.Load(app_sourcepath+"data\tracks\Curly.ini")
   tbgl_entityCreateDLSlot(%scene, %eTrack, 0, dlTrack)
 
   dim player(2) as tScooterRacer
-  player(1).Load("data/models/scooter.m15")
+  player(1).Load(app_sourcepath+"racers\naranjino.ini")
   player(1).ToEntity(%scene)
   
-  player(2).Load("data/models/scooter.m15")
+  player(2).Load(app_sourcepath+"racers\medlina.ini")
   player(2).ToEntity(%scene)
   
   tbgl_entitySetPos(%scene, player(1).pivotEntity, track.startX + switch(track.startRot=0, 2, track.startRot=90,-2, track.startRot=180,-2, track.startRot=270, 2),
@@ -86,8 +87,7 @@ function tbMain()
   single p2x, p2y, p2z
   single distance
   
-  single speed, inclination
-  single gas, steer
+
   single screenOffset
   
   tbgl_backColor 64, 128, 255
@@ -136,10 +136,22 @@ function tbMain()
                 else
                   tbgl_setActiveFont 2
                   tbgl_printfont playerData(i).getTime(), 2.5, 62.5
+                  
+                  if DT_TimeToSec("00:"+playerData(i).getTime()) < DT_TimeToSec("00:"+track.record) then
+                    tbgl_pushColor 255,255,0
+                      tbgl_printfont track.record, 2.5, 52.5
+                    tbgl_popColor
+                  end if
+                  
+                  if playerData(i).didRecord then
+                    tbgl_setActiveFont 1
+                    tbgl_pushColor 255, 255, 200+sin(gettickcount/100)*55
+                      tbgl_printfont "RECORD", 40, 47
+                    tbgl_popColor
+                  end if
                 end If
                 tbgl_popStateProtect
             tbgl_popColor
-
           
       osr(i).endRender()
     next
@@ -183,6 +195,11 @@ function tbMain()
           tbgl_entityTurn(%scene, player(i).cameraPivot, 0, 22.5/FrameRate, 0)
           if playerData(i).endTime = 0 then
             playerData(i).endTime = timer
+          end if
+          
+          if DT_TimeToSec("00:"+playerData(i).getTime()) < DT_TimeToSec("00:"+track.record) then
+            track.SetRecord(playerData(i).getTime())
+            playerData(i).didRecord = true
           end if
           
         end if

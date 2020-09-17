@@ -1,4 +1,4 @@
-﻿uses "ui"
+﻿uses "ui", "ini"
 uses "console"
 
 #include once "resourceManager.tbasicu"
@@ -8,7 +8,7 @@ type tTrack
   mRoad  as int32
   mSign      as int32
   mTerrain   as int32
-  mTerrainTree   as int32
+  mTerrainDecal   as int32
   
   dlTrack    as int32
   
@@ -23,30 +23,39 @@ type tTrack
   nWidth     as uint32
   nHeight    as uint32
   
+  record as string
+  
+  configFile  as string
+  
   function private_IsRoad(x as int32, y as int32) as int32
     return in(Canvas_GetPixel(x, y), %COLOR_ROAD, %COLOR_START, %COLOR_FINISH) > 0
   end function
   
-  function Load(fileName as string)
+  function Load(configFile as string)
+    me.configFile = configFile
     string modelPath = app_sourcepath+"data\Models\"
+
+    me.ReleaseResources()
+    
+    me.record = INI_GetKey(configFile, "Metadata", "record")
     
     ' -- Load resources
-    me.mRoad = gResourceManager.GetModelId()
-    me.mSign     = gResourceManager.GetModelId()
-    me.mTerrain  = gResourceManager.GetModelId()
-    me.mTerrainTree  = gResourceManager.GetModelId()
+    me.mRoad          = gResourceManager.GetModelId()
+    me.mSign          = gResourceManager.GetModelId()
+    me.mTerrain       = gResourceManager.GetModelId()
+    me.mTerrainDecal  = gResourceManager.GetModelId()
     
-    me.dlTrack   = gResourceManager.GetDListId()
+    me.dlTrack        = gResourceManager.GetDListId()
     
-    tbgl_m15LoadModel modelPath + "road8.m15", "", me.mRoad, 0, %TBGL_NORMAL_PRECISE
-    tbgl_m15LoadModel modelPath + "sign8.m15", "", me.mSign, 0, %TBGL_NORMAL_PRECISE
-    tbgl_m15LoadModel modelPath + "terrain8.m15", "", me.mTerrain, 0, %TBGL_NORMAL_PRECISE
-    tbgl_m15LoadModel modelPath + "terrain_tree8.m15", "", me.mTerrainTree, 0, %TBGL_NORMAL_PRECISE
+    tbgl_m15LoadModel modelPath + INI_GetKey(configFile, "Tiles", "road")         , "",         me.mRoad, 0, %TBGL_NORMAL_PRECISE
+    tbgl_m15LoadModel modelPath + INI_GetKey(configFile, "Tiles", "sign")         , "",         me.mSign, 0, %TBGL_NORMAL_PRECISE
+    tbgl_m15LoadModel modelPath + INI_GetKey(configFile, "Tiles", "terrain")      , "",      me.mTerrain, 0, %TBGL_NORMAL_PRECISE
+    tbgl_m15LoadModel modelPath + INI_GetKey(configFile, "Tiles", "terrain_decal"), "", me.mTerrainDecal, 0, %TBGL_NORMAL_PRECISE
     
     ' -- Create display list of track
-    Canvas_BitmapGetFileInfo(fileName, me.nWidth, me.nHeight)
-    
-    me.hBitmap = Canvas_BitmapLoad(fileName, me.nWidth, me.nHeight)
+    string trackBitmap = app_sourcepath+"data\Tracks\" + INI_GetKey(configFile, "Map", "bitmap")
+    Canvas_BitmapGetFileInfo(trackBitmap, me.nWidth, me.nHeight)
+    me.hBitmap = Canvas_BitmapLoad(trackBitmap, me.nWidth, me.nHeight)
     Canvas_Attach(me.hBitmap, 0, 0)
     
     %COLOR_TERRAIN = rgb(34, 177, 76)
@@ -70,7 +79,7 @@ type tTrack
 
           elseif Canvas_GetPixel(x, y) = %COLOR_TERRAIN_TREE then
               tbgl_rotate 0, rnd(0,360),0'*90,0
-              tbgl_m15DrawModel me.mTerrainTree
+              tbgl_m15DrawModel me.mTerrainDecal
 
           elseif Canvas_GetPixel(x, y) = %COLOR_ROAD then
               tbgl_m15DrawModel me.mRoad
@@ -115,12 +124,6 @@ type tTrack
     
     tbgl_endList
     
-    ' -- Free resources
-    gResourceManager.FreeModelId(me.mRoad)
-    gResourceManager.FreeModelId(me.mSign)
-    gResourceManager.FreeModelId(me.mTerrain)
-    gResourceManager.FreeModelId(me.mTerrainTree)
-    
     return me.dlTrack
   end function
   
@@ -130,6 +133,25 @@ type tTrack
     int32 y = ((me.nHeight*8)/2 + worldZ)/8
     
     return not in(Canvas_GetPixel(x, y), %COLOR_ROAD, %COLOR_START, %COLOR_FINISH)
+  end function
+  
+  function SetRecord(newRecord as string)
+    me.record = newRecord
+    INI_SetKey(me.configFile, "Metadata", "record", newRecord)
+  end function
+  
+  function ReleaseResources()
+    if me.mRoad         then gResourceManager.FreeModelId(me.mRoad)
+    if me.mSign         then gResourceManager.FreeModelId(me.mSign)
+    if me.mTerrain      then gResourceManager.FreeModelId(me.mTerrain)
+    if me.mTerrainDecal then gResourceManager.FreeModelId(me.mTerrainDecal)
+    if me.dlTrack       then gResourceManager.FreeDListId(me.dlTrack)
+    
+    me.mRoad = 0
+    me.mSign = 0
+    me.mTerrain = 0
+    me.mTerrainDecal = 0
+    me.dlTrack = 0
   end function
 
 end type
