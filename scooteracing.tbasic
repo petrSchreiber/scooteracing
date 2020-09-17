@@ -1,4 +1,4 @@
-﻿uses "tbgl", "tbdi"
+﻿uses "tbgl", "tbdi", "dt"
 
 #include once "data/game/resourceManager.tbasicu"
 #include once "offScreenRenderer/offScreenRenderer8b.tbasicu"
@@ -15,13 +15,20 @@ begin const
   %eTrack
 end const
 
-uses "dt"
+
 
 type tPlayerMetadata
 
   startTime    as single
   endTime      as single
   didRecord    as int32
+  
+  function Initialize()
+    me.startTime = 0
+    me.endTime = 0
+    me.didRecord = 0
+  end function
+  
   function GetTime() as string
     if me.endTime then
       return remain$(dt_secToTime(me.endTime - me.startTime), ":")
@@ -29,6 +36,20 @@ type tPlayerMetadata
       return remain$(dt_secToTime(timer - me.startTime), ":")
     end if
   end function
+end type
+
+type tGameSession
+
+  countdown as single
+  
+  playerData(2) as tPlayerMetadata
+  
+  function Initialize()
+    me.countdown = 4.9
+    me.playerData(1).Initialize()
+    me.playerData(2).Initialize()
+  end function
+
 end type
 
 function tbMain()
@@ -45,8 +66,9 @@ function tbMain()
   dim playerController(2) as tXBoxOneController
   playerController(1).Initialize(hWnd, 1)
   playerController(2).Initialize(hWnd, 2)
-  
-  dim playerData(2) as tPlayerMetadata
+
+  dim game as tGameSession
+  game.Initialize()
 
   ' -- Create scene
   tbgl_sceneCreate(%scene)
@@ -86,8 +108,6 @@ function tbMain()
   single p1x, p1y, p1z
   single p2x, p2y, p2z
   single distance
-  
-
   single screenOffset
   
   tbgl_backColor 64, 128, 255
@@ -98,7 +118,6 @@ function tbMain()
 
   int32 i
   
-  single countdown = 4.9
   string countdownText
   
   ' -- Main loop
@@ -115,35 +134,36 @@ function tbMain()
           player(i).EnforceCamera()
           tbgl_sceneRender(%scene)
           
-          
             tbgl_rendermatrix2d
             tbgl_pushColor 255, 255, 255
               tbgl_pushStateProtect %TBGL_LIGHTING
-                if countdown > -1 then
-                  countdown -= 0.5/frameRate
-                
-                  if int(countdown) > 0 then
-                    countdownText = int(countdown)
+                if game.countdown > -1 then
+                  game.countdown -= 0.5/frameRate
+                  
+                  tbgl_setActiveFont 1
+                  
+                  if int(game.countdown) > 0 then
+                    countdownText = int(game.countdown)
                     tbgl_printfont countdownText, 90, 40
                   else
                     countdownText = "GO!"
-                    if playerData(i).startTime = 0 then
-                      playerData(i).startTime = timer
+                    if game.playerData(i).startTime = 0 then
+                      game.playerData(i).startTime = timer
                     end if
-                    tbgl_setActiveFont 1
+                    
                     tbgl_printfont countdownText, 70, 40
                   end if
                 else
                   tbgl_setActiveFont 2
-                  tbgl_printfont playerData(i).getTime(), 2.5, 62.5
+                  tbgl_printfont game.playerData(i).getTime(), 2.5, 62.5
                   
-                  if DT_TimeToSec("00:"+playerData(i).getTime()) < DT_TimeToSec("00:"+track.record) then
+                  if DT_TimeToSec("00:"+game.playerData(i).getTime()) < DT_TimeToSec("00:"+track.record) then
                     tbgl_pushColor 255,255,0
                       tbgl_printfont track.record, 2.5, 52.5
                     tbgl_popColor
                   end if
                   
-                  if playerData(i).didRecord then
+                  if game.playerData(i).didRecord then
                     tbgl_setActiveFont 1
                     tbgl_pushColor 255, 255, 200+sin(gettickcount/100)*55
                       tbgl_printfont "RECORD", 40, 47
@@ -184,8 +204,25 @@ function tbMain()
 
     ' -- ESCAPE key to exit application
     if tbgl_getWindowKeyState(hWnd, %VK_ESCAPE) then exit while
+    if playerController(1).ResetVoted() and playerController(2).ResetVoted() then 
+      'dim game as tGameSession
+      game.Initialize()
+      tbgl_entitySetPos(%scene, player(1).pivotEntity, track.startX + switch(track.startRot=0, 2, track.startRot=90,-2, track.startRot=180,-2, track.startRot=270, 2),
+                                                       0,
+                                                       track.startZ + switch(track.startRot=0, 2, track.startRot=90,-2, track.startRot=180,-2, track.startRot=270, 2))
+        tbgl_entitySetRot(%scene, player(1).pivotEntity, 0, 180-track.startRot, 0)
+        
+      tbgl_entitySetPos(%scene, player(2).pivotEntity, track.startX + switch(track.startRot=0,-2, track.startRot=90,-2, track.startRot=180, 2, track.startRot=270, 2),
+                                                       0,
+                                                       track.startZ + switch(track.startRot=0, 2, track.startRot=90, 2, track.startRot=180,-2, track.startRot=270,-2))
+        tbgl_entitySetRot(%scene, player(2).pivotEntity, 0, 180-track.startRot, 0)
+       
+      player(1).Initialize()
+      player(2).Initialize()
+      
+    end if
     
-    if int(countdown) < 1 then
+    if int(game.countdown) < 1 then
       for i = 1 to 2
         if not player(i).IsFinished(track) then
           player(i).ProcessInput(playerController(i))
@@ -193,13 +230,14 @@ function tbMain()
           
         else
           tbgl_entityTurn(%scene, player(i).cameraPivot, 0, 22.5/FrameRate, 0)
-          if playerData(i).endTime = 0 then
-            playerData(i).endTime = timer
+          if game.playerData(i).endTime = 0 then
+            tbgl_entityPush(%scene, player(i).cameraEntity, 0, -1, 4)
+            game.playerData(i).endTime = timer
           end if
           
-          if DT_TimeToSec("00:"+playerData(i).getTime()) < DT_TimeToSec("00:"+track.record) then
-            track.SetRecord(playerData(i).getTime())
-            playerData(i).didRecord = true
+          if DT_TimeToSec("00:"+game.playerData(i).getTime()) < DT_TimeToSec("00:"+track.record) then
+            track.SetRecord(game.playerData(i).getTime())
+            game.playerData(i).didRecord = true
           end if
           
         end if

@@ -23,4 +23,8 @@ type tXboxOneController
   function GetSteer() as Float64
     return -TBDI_JoyX(me.controllerId)/1024
   end function
+  
+  function ResetVoted()
+    return TBDI_JoyButton(me.controllerId, 5) = 128 and TBDI_JoyButton(me.controllerId, 6) = 128
+  end function
 end type

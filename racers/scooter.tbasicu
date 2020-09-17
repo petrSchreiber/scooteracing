@@ -2,6 +2,7 @@
 
 type tScooterRacer
 
+  configFile as string
   modelId as int32
   
   scene        as int32
@@ -23,11 +24,12 @@ type tScooterRacer
   maxAcceleration as float32
 
   function Load(configFile as string)
-  
+    me.configFile = configFile
+    
     me.ReleaseResources()
   
     printl configFile
-    string modelFile = app_sourcepath + "data\models\" + ini_getkey(configFile, "Geometry", "model")
+    string modelFile = app_sourcepath + "data\models\" + ini_getkey(me.configFile, "Geometry", "model")
     printl modelFile
     me.modelId = gResourceManager.getModelId()
     tbgl_m15LoadModel modelFile, "", me.modelId, 0, %TBGL_NORMAL_PRECISE
@@ -44,11 +46,23 @@ type tScooterRacer
       end if
     next
     
-    me.maxInclination = ini_getkey(configFile, "Params", "maxInclination")
-    me.maxSpeed       = ini_getkey(configFile, "Params", "maxSpeed")
-    me.maxSteer       = ini_getkey(configFile, "Params", "maxSteer")
-    me.maxWind        = ini_getkey(configFile, "Params", "maxWind")
-    me.maxAcceleration= ini_getkey(configFile, "Params", "maxAcceleration")
+    me.Initialize()
+    
+  end function
+  
+  function Initialize()
+    me.maxInclination = ini_getkey(me.configFile, "Params", "maxInclination")
+    me.maxSpeed       = ini_getkey(me.configFile, "Params", "maxSpeed")
+    me.maxSteer       = ini_getkey(me.configFile, "Params", "maxSteer")
+    me.maxWind        = ini_getkey(me.configFile, "Params", "maxWind")
+    me.maxAcceleration= ini_getkey(me.configFile, "Params", "maxAcceleration")
+    
+    me.gas = 0
+    me.speed = 0
+    me.steer = 0
+    me.inclination = 0
+    
+    me.AdjustCamera()
   end function
   
   function ToEntity(scene as int32) as int32
@@ -120,13 +134,17 @@ type tScooterRacer
     tbgl_entityTurn(me.scene, me.pivotEntity, 0, me.steer*((me.maxSpeed*2-me.speed)/me.maxSpeed)*me.maxSteer/frameRate, 0)
     tbgl_entitySetRot(me.scene, me.entity, 0, 0, -me.inclination * (me.speed/me.maxSpeed) )
     
+    me.AdjustCamera()
+    
+    tbgl_entityPush(me.scene, me.pivotEntity, 0, 0, me.speed/frameRate)
+    
+  end function
+  
+  function AdjustCamera()
     if me.cameraEntity then
       tbgl_entitySetRot(me.scene, me.cameraEntity, -1, 0, me.inclination/2 * (me.speed/me.maxSpeed) )
       tbgl_entitySetPos(me.scene, me.cameraEntity, 0, 2.5, -5-me.speed/10)
     end if
-    
-    tbgl_entityPush(me.scene, me.pivotEntity, 0, 0, me.speed/frameRate)
-    
   end function
   
   function IsFinished(track as tTrack)
