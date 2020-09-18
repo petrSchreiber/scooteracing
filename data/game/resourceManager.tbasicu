@@ -24,6 +24,7 @@ type tResourceManager
       if me.modelId(i) = False then
         me.modelId(i) = True
         me.modelIdCount += 1
+
         return i
       end if
     next
@@ -53,6 +54,7 @@ type tResourceManager
       if me.dListId(i) = False then
         me.dListId(i) = True
         me.dListIdCount += 1
+        
         return i
       end if
     next

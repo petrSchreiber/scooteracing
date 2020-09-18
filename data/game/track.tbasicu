@@ -67,8 +67,8 @@ type tTrack
     int32 x, y
     single tileX, tileZ
     tbgl_newList me.dlTrack
-    for x = 1 to me.nWidth
-      for y = 1 to me.nHeight
+    for x = 0 to me.nWidth-1
+      for y = 0 to me.nHeight-1
         
         tileX = x*8-(me.nWidth*8)/2
         tileZ = y*8-(me.nHeight*8)/2
@@ -79,7 +79,7 @@ type tTrack
               tbgl_m15DrawModel me.mTerrain
 
           elseif Canvas_GetPixel(x, y) = %COLOR_TERRAIN_TREE then
-              tbgl_rotate 0, rnd(0,360),0'*90,0
+              tbgl_rotate rnd(0,3)*90,0,1,0
               tbgl_m15DrawModel me.mTerrainDecal
 
           elseif Canvas_GetPixel(x, y) = %COLOR_ROAD then
